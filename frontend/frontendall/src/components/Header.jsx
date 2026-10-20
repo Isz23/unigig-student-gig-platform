@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom'; // useLocation එකතු කරන ලදී
 import {
   GraduationCap,
   Compass,
@@ -16,6 +16,11 @@ export default function Header() {
   const [activeTab, setActiveTab] = useState('Home');
   const [activeCategory, setActiveCategory] = useState('Academics & Tutoring');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // දැනට තිබෙන URL Path එක ලබා ගැනීම
+  const location = useLocation();
+  // /login හෝ /signup පිටුවලදී Categories Bar එක සඟවන්න (Hide කරන්න)
+  const hideCategoryBar = location.pathname === '/login' || location.pathname === '/signup';
 
   // Category list for the bottom navigation bar
   const categories = [
@@ -53,7 +58,7 @@ export default function Header() {
       {/* ---------------- 2. Main Navigation Bar ---------------- */}
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3.5 flex items-center justify-between gap-4">
 
-        {/* Logo -> Click කළ විට Home එකට යයි */}
+        {/* Logo */}
         <Link
           to="/"
           onClick={() => setActiveTab('Home')}
@@ -112,7 +117,6 @@ export default function Header() {
 
         {/* Desktop Navigation & Auth Buttons */}
         <div className="hidden lg:flex items-center gap-6 text-sm font-medium">
-          {/* Home Link */}
           <Link
             to="/"
             onClick={() => setActiveTab('Home')}
@@ -125,7 +129,6 @@ export default function Header() {
             Home
           </Link>
 
-          {/* Browse Gigs Link */}
           <Link
             to="/browse"
             onClick={() => setActiveTab('Browse Gigs')}
@@ -138,7 +141,6 @@ export default function Header() {
             Browse Gigs
           </Link>
 
-          {/* Log In Link */}
           <Link
             to="/login"
             className="text-gray-700 hover:text-gray-900 font-semibold transition-colors"
@@ -146,7 +148,6 @@ export default function Header() {
             Log In
           </Link>
 
-          {/* Sign Up Link */}
           <Link
             to="/signup"
             className="bg-[#007a4d] hover:bg-[#006640] text-white font-semibold px-5 py-2 rounded-xl transition-all shadow-sm active:scale-95"
@@ -165,39 +166,40 @@ export default function Header() {
         </button>
       </div>
 
-      {/* ---------------- 3. Bottom Category Bar ---------------- */}
-      <div className="border-t border-gray-100 bg-white">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5">
-          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] text-xs sm:text-sm">
-            {categories.map((cat) => {
-              const isSelected = activeCategory === cat.name;
+      {/* ---------------- 3. Bottom Category Bar (Login & Signup පිටුවලදී Hide වේ) ---------------- */}
+      {!hideCategoryBar && (
+        <div className="border-t border-gray-100 bg-white">
+          <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5">
+            <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] text-xs sm:text-sm">
+              {categories.map((cat) => {
+                const isSelected = activeCategory === cat.name;
 
-              return (
-                <button
-                  key={cat.name}
-                  type="button"
-                  onClick={() => setActiveCategory(cat.name)}
-                  className={`whitespace-nowrap px-3.5 py-1.5 rounded-full font-medium transition-all flex items-center gap-1.5 shrink-0 ${
-                    cat.icon ? 'text-gray-700 hover:text-gray-900 font-semibold' : ''
-                  } ${
-                    cat.highlighted || isSelected
-                      ? 'bg-[#eaf8f1] text-[#00875a] font-semibold'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  {cat.icon && <LayoutGrid className="w-3.5 h-3.5 text-gray-600" />}
-                  <span>{cat.name}</span>
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={cat.name}
+                    type="button"
+                    onClick={() => setActiveCategory(cat.name)}
+                    className={`whitespace-nowrap px-3.5 py-1.5 rounded-full font-medium transition-all flex items-center gap-1.5 shrink-0 ${
+                      cat.icon ? 'text-gray-700 hover:text-gray-900 font-semibold' : ''
+                    } ${
+                      cat.highlighted || isSelected
+                        ? 'bg-[#eaf8f1] text-[#00875a] font-semibold'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    {cat.icon && <LayoutGrid className="w-3.5 h-3.5 text-gray-600" />}
+                    <span>{cat.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ---------------- Mobile Menu Dropdown (Links සහිතව) ---------------- */}
+      {/* ---------------- Mobile Menu Dropdown ---------------- */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-gray-200 px-4 py-4 space-y-4 bg-white">
-          {/* Mobile Search */}
           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-1">
             <input
               type="text"
@@ -210,7 +212,6 @@ export default function Header() {
           </div>
 
           <div className="flex flex-col gap-1 pt-2">
-            {/* Mobile Home Link */}
             <Link
               to="/"
               onClick={() => {
@@ -226,7 +227,6 @@ export default function Header() {
               Home
             </Link>
 
-            {/* Mobile Browse Gigs Link */}
             <Link
               to="/browse"
               onClick={() => {
@@ -244,7 +244,6 @@ export default function Header() {
 
             <hr className="border-gray-100 my-2" />
 
-            {/* Mobile Log In Link */}
             <Link
               to="/login"
               onClick={() => setMobileMenuOpen(false)}
@@ -253,7 +252,6 @@ export default function Header() {
               Log In
             </Link>
 
-            {/* Mobile Sign Up Link */}
             <Link
               to="/signup"
               onClick={() => setMobileMenuOpen(false)}
