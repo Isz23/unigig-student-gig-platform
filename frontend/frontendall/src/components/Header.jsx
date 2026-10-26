@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // useLocation එකතු කරන ලදී
+import { Link, useLocation } from 'react-router-dom';
 import {
   GraduationCap,
   Compass,
@@ -19,8 +19,12 @@ export default function Header() {
 
   // දැනට තිබෙන URL Path එක ලබා ගැනීම
   const location = useLocation();
-  // /login හෝ /signup පිටුවලදී Categories Bar එක සඟවන්න (Hide කරන්න)
-  const hideCategoryBar = location.pathname === '/login' || location.pathname === '/signup';
+
+  // /login, /signup හෝ /stddashboard පිටුවලදී Categories Bar එක සඟවන්න (Hide කරන්න)
+  const hideCategoryBar =
+    location.pathname === '/login' ||
+    location.pathname === '/signup' ||
+    location.pathname.startsWith('/stddashboard');
 
   // Category list for the bottom navigation bar
   const categories = [
@@ -166,7 +170,7 @@ export default function Header() {
         </button>
       </div>
 
-      {/* ---------------- 3. Bottom Category Bar (Login & Signup පිටුවලදී Hide වේ) ---------------- */}
+      {/* ---------------- 3. Bottom Category Bar (Login, Signup & stddashboard පිටුවලදී Hide වේ) ---------------- */}
       {!hideCategoryBar && (
         <div className="border-t border-gray-100 bg-white">
           <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5">

@@ -13,7 +13,7 @@ export default function Login() {
     e.preventDefault();
     // Backend API සම්බන්ධ කළ පසු මෙතනින් authentication සිදු කෙරේ
     console.log({ email, password, rememberMe });
-    navigate('/browse'); // දැනට login වූ පසු Browse page එකට redirect වේ
+    navigate('/stddashboard'); // දැනට login වූ පසු Browse page එකට redirect වේ
   };
 
   return (
