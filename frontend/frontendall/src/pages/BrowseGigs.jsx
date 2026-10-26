@@ -1,6 +1,7 @@
- import { useState } from 'react';
+import { useState } from 'react';
 import { Search, SlidersHorizontal, DollarSign, RotateCcw } from 'lucide-react';
 import GigCard from '../components/GigCard';
+import GigDetailsModal from '../components/GigDetailsModal';
 
 export default function BrowseGigs() {
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -8,6 +9,7 @@ export default function BrowseGigs() {
   const [budgetFilter, setBudgetFilter] = useState('all'); // Budget state
   const [sortBy, setSortBy] = useState('default');
   const [favorites, setFavorites] = useState({});
+  const [selectedGig, setSelectedGig] = useState(null); // Click කරන Gig එක තබා ගන්නා state එක
 
   const toggleFavorite = (id) => {
     setFavorites((prev) => ({
@@ -40,6 +42,7 @@ export default function BrowseGigs() {
         avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop',
       },
       title: 'I will tutor Calculus I & II and provide handwritten step-by-step notes',
+      description: 'Struggling with limits, derivatives, integrals or multivariable calculus? I will conduct a 1-on-1 tutoring session and give you access to my curated formula sheets and solved past exam questions.',
       rating: '4.9',
       reviews: 128,
       turnaround: '1 Day',
@@ -57,6 +60,7 @@ export default function BrowseGigs() {
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop',
       },
       title: 'I will build a responsive React & Vite web application or fix your bugs',
+      description: 'Need help with your front-end web project or assignment? I will write clean, well-commented React and Tailwind CSS components tailored for university submissions.',
       rating: '5.0',
       reviews: 94,
       turnaround: '2 Days',
@@ -74,6 +78,7 @@ export default function BrowseGigs() {
         avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop',
       },
       title: 'I will design modern student club posters, event flyers, and social media...',
+      description: 'Get eye-catching vector designs, stage pandals, and promotional graphics made for student clubs and campus societies using Figma and Adobe Illustrator.',
       rating: '4.8',
       reviews: 67,
       turnaround: '1 Day',
@@ -91,6 +96,7 @@ export default function BrowseGigs() {
         avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop',
       },
       title: 'I will proofread your university thesis, essays, or lab reports with APA/IEEE...',
+      description: 'Thorough review of academic structure, tone, grammar, and bibliography formatting following strict APA 7th or IEEE academic standards.',
       rating: '5.0',
       reviews: 142,
       turnaround: '1 Day',
@@ -108,6 +114,7 @@ export default function BrowseGigs() {
         avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150&auto=format&fit=crop',
       },
       title: 'I will edit cinematic YouTube videos, podcast clips, and TikTok campus reels',
+      description: 'High-energy edits with captions, sound design, and color grading optimized for TikTok, Instagram Reels, and YouTube projects.',
       rating: '4.9',
       reviews: 81,
       turnaround: '2 Days',
@@ -125,6 +132,7 @@ export default function BrowseGigs() {
         avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150&auto=format&fit=crop',
       },
       title: 'I will teach Python algorithms and conduct mock software engineering...',
+      description: 'Master Data Structures and Algorithms with step-by-step logic tracing, LeetCode style problems, and technical interview prep.',
       rating: '5.0',
       reviews: 115,
       turnaround: '1 Day',
@@ -165,7 +173,6 @@ export default function BrowseGigs() {
       return matchCategory && matchSearch && matchBudget;
     })
     .sort((a, b) => {
-      // Sorting Options
       if (sortBy === 'price-low') return a.price - b.price;
       if (sortBy === 'price-high') return b.price - a.price;
       if (sortBy === 'rating') return parseFloat(b.rating) - parseFloat(a.rating);
@@ -174,7 +181,7 @@ export default function BrowseGigs() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 font-sans">
-      
+
       {/* Page Title */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -187,7 +194,7 @@ export default function BrowseGigs() {
 
       {/* Filter & Search Bar Controls */}
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center mb-8">
-        
+
         {/* Search Input */}
         <div className="relative w-full lg:w-96">
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -202,7 +209,7 @@ export default function BrowseGigs() {
 
         {/* Filters and Sorting Controls */}
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
-          
+
           {/* 1. Budget Filter Dropdown */}
           <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700">
             <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
@@ -235,7 +242,7 @@ export default function BrowseGigs() {
             </select>
           </div>
 
-          {/* 3. Reset Button (Only shows if any filter is active) */}
+          {/* 3. Reset Button */}
           {(selectedCategory !== 'All' || searchQuery !== '' || budgetFilter !== 'all' || sortBy !== 'default') && (
             <button
               type="button"
@@ -277,6 +284,7 @@ export default function BrowseGigs() {
               gig={gig}
               isFavorite={!!favorites[gig.id]}
               onToggleFavorite={toggleFavorite}
+              onClick={() => setSelectedGig(gig)}
             />
           ))}
         </div>
@@ -292,6 +300,13 @@ export default function BrowseGigs() {
           </button>
         </div>
       )}
+
+      {/* Gig Details Modal Popup */}
+      <GigDetailsModal
+        gig={selectedGig}
+        isOpen={Boolean(selectedGig)}
+        onClose={() => setSelectedGig(null)}
+      />
 
     </div>
   );

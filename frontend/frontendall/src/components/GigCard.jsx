@@ -1,9 +1,11 @@
 import { Star, Clock, ShieldCheck, Heart } from 'lucide-react';
 
-export default function GigCard({ gig, isFavorite, onToggleFavorite }) {
+export default function GigCard({ gig, isFavorite, onToggleFavorite, onClick }) {
   return (
-    <div className="group bg-white rounded-2xl border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
-      
+    <div
+      onClick={onClick}
+      className="group bg-white rounded-2xl border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden cursor-pointer"
+    >
       {/* Image Container */}
       <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
         <img
@@ -14,14 +16,17 @@ export default function GigCard({ gig, isFavorite, onToggleFavorite }) {
 
         {/* Badge */}
         <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[11px] px-2.5 py-1 rounded-full font-medium flex items-center gap-1.5 shadow-sm border border-white/10">
-          <ShieldCheck className={`w-3.5 h-3.5 ${gig.badgeColor}`} />
+          <ShieldCheck className={`w-3.5 h-3.5 ${gig.badgeColor || 'text-emerald-400'}`} />
           <span>{gig.badge}</span>
         </div>
 
-        {/* Favorite Heart Button */}
+        {/* Favorite Heart Button (Modal එක open වීම වැළැක්වීමට e.stopPropagation යොදා ඇත) */}
         <button
           type="button"
-          onClick={() => onToggleFavorite(gig.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(gig.id);
+          }}
           aria-label="Save gig"
           className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-all"
         >
@@ -35,7 +40,6 @@ export default function GigCard({ gig, isFavorite, onToggleFavorite }) {
 
       {/* Card Body */}
       <div className="p-4 flex flex-col flex-1">
-        
         {/* Seller Info */}
         <div className="flex items-center gap-2.5 mb-2.5">
           <img
@@ -76,7 +80,6 @@ export default function GigCard({ gig, isFavorite, onToggleFavorite }) {
             ${gig.price}
           </span>
         </div>
-
       </div>
     </div>
   );
