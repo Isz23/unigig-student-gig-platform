@@ -4,14 +4,15 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 
-// Pages
+// Public Pages
 import Home from './pages/Home';
 import BrowseGigs from './pages/BrowseGigs';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 
-// Student Pages
+// Student Pages 
 import Dashboard from './pages/Student/Dashboard';
+import CreateGig from './pages/Student/CreateGig';
 
 function App() {
   return (
@@ -29,8 +30,9 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
 
-            {/* Student Dashboard Route එක /stddashboard ලෙස */}
+            {/* Student Routes */}
             <Route path="/stddashboard" element={<Dashboard />} />
+            <Route path="/create-gig" element={<CreateGig />} />
           </Routes>
         </main>
 
