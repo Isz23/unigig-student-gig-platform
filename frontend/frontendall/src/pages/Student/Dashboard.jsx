@@ -11,13 +11,25 @@ import {
   ShieldCheck,
   ArrowUpRight,
   UserCheck,
-  Briefcase
+  Briefcase,
+  UploadCloud,
+  X,
+  Send,
+  Link2,
+  CheckCircle2,
+  FileText
 } from 'lucide-react';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview'); // overview, gigs, orders, reviews
 
-  // Dummy Student Profile Data
+  // Delivery Modal States
+  const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
+  const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState(null);
+  const [deliveryWorkUrl, setDeliveryWorkUrl] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
+
+  // Student Profile Data
   const student = {
     name: 'Dulaksha Nipun',
     university: 'South Eastern University of Sri Lanka',
@@ -30,7 +42,7 @@ export default function Dashboard() {
     pendingClearance: 40.0,
   };
 
-  // Dummy Active Gigs posted by student (Seller View)
+  // Active Gigs
   const myGigs = [
     {
       id: 1,
@@ -61,8 +73,18 @@ export default function Dashboard() {
     },
   ];
 
-  // Dummy Orders (Orders placed or received)
-  const orders = [
+  // Dynamic Orders State (Deliverable submit කළ විට status වෙනස් වේ)
+  const [orders, setOrders] = useState([
+    {
+      id: 'ORD-9477',
+      title: 'Responsive React & Tailwind Web App Development',
+      peer: 'Kavindu Perera (UoM)',
+      amount: 35.0,
+      type: 'Sold (Seller)',
+      deadline: 'Tomorrow, 6:00 PM',
+      status: 'In Progress',
+      statusColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    },
     {
       id: 'ORD-9482',
       title: 'Calculus I Handwritten Notes & Step-by-Step Solutions',
@@ -74,16 +96,6 @@ export default function Dashboard() {
       statusColor: 'bg-amber-50 text-amber-700 border-amber-200',
     },
     {
-      id: 'ORD-9477',
-      title: 'Responsive React & Tailwind Web App Development',
-      peer: 'Kavindu Perera (UoM)',
-      amount: 35.0,
-      type: 'Sold (Seller)',
-      deadline: 'Oct 28, 2026',
-      status: 'Delivered',
-      statusColor: 'bg-blue-50 text-blue-700 border-blue-200',
-    },
-    {
       id: 'ORD-9321',
       title: 'Research Paper APA 7th Proofreading & Bibliography',
       peer: 'Emily Watson (Oxford)',
@@ -93,9 +105,9 @@ export default function Dashboard() {
       status: 'Completed',
       statusColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     },
-  ];
+  ]);
 
-  // Dummy Reviews Data (Client & Peer Feedback)
+  // Reviews Data
   const reviews = [
     {
       id: 1,
@@ -128,6 +140,41 @@ export default function Dashboard() {
       avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=120&auto=format&fit=crop'
     }
   ];
+
+  // Open & Close Modal
+  const handleOpenDeliveryModal = (order) => {
+    setSelectedOrderForDelivery(order);
+    setDeliveryWorkUrl('');
+    setDeliveryNotes('');
+    setIsDeliveryModalOpen(true);
+  };
+
+  const handleCloseDeliveryModal = () => {
+    setIsDeliveryModalOpen(false);
+    setSelectedOrderForDelivery(null);
+  };
+
+  // Submit Deliverable Logic
+  const handleSubmitDelivery = (e) => {
+    e.preventDefault();
+
+    // Order status එක 'Delivered' ලෙස යාවත්කාලීන කිරීම
+    setOrders((prevOrders) =>
+      prevOrders.map((ord) =>
+        ord.id === selectedOrderForDelivery.id
+          ? {
+              ...ord,
+              status: 'Delivered',
+              statusColor: 'bg-blue-50 text-blue-700 border-blue-200',
+              submittedUrl: deliveryWorkUrl,
+            }
+          : ord
+      )
+    );
+
+    alert(`🎉 Deliverable for ${selectedOrderForDelivery.id} submitted successfully! The client has been notified to review and release funds.`);
+    handleCloseDeliveryModal();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50/60 py-8 px-4 sm:px-6 lg:px-8 font-sans">
@@ -197,8 +244,8 @@ export default function Dashboard() {
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Orders</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 mt-1">2</h3>
-              <span className="text-[11px] text-gray-500 mt-1 block">1 Buyer • 1 Seller</span>
+              <h3 className="text-2xl font-extrabold text-gray-900 mt-1">{orders.length}</h3>
+              <span className="text-[11px] text-gray-500 mt-1 block">Live Escrow Active</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <ShoppingBag className="w-6 h-6" />
@@ -218,7 +265,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Student Rating Card (Click to open reviews) */}
+          {/* Student Rating Card */}
           <div 
             onClick={() => setActiveTab('reviews')}
             className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-[#007a4d]/30 transition-all"
@@ -291,8 +338,27 @@ export default function Dashboard() {
                         Peer: <strong className="text-gray-700">{ord.peer}</strong> • Deadline: {ord.deadline}
                       </p>
                     </div>
-                    <div className="text-right sm:shrink-0">
+
+                    <div className="flex items-center gap-3 self-end sm:self-center">
                       <span className="text-sm font-extrabold text-[#007a4d]">${ord.amount.toFixed(2)}</span>
+
+                      {/* Seller කෙනෙක් ලෙස In Progress නම් Deliver Work button එක පෙන්වයි */}
+                      {ord.type.includes('Seller') && ord.status === 'In Progress' && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDeliveryModal(ord)}
+                          className="px-3.5 py-1.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                        >
+                          <UploadCloud className="w-3.5 h-3.5" />
+                          <span>Deliver Work</span>
+                        </button>
+                      )}
+
+                      {ord.status === 'Delivered' && (
+                        <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-100">
+                          Awaiting Review
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -307,7 +373,7 @@ export default function Dashboard() {
                 </div>
                 <h3 className="text-base font-extrabold text-gray-900">Escrow Security Active</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mt-2">
-                  All peer payments are held safely in escrow. Funds are only transferred after the deliverable is approved according to university guidelines.
+                  All peer payments are held safely in escrow. Once you submit your deliverable, the client reviews it to release funds directly to your wallet.
                 </p>
               </div>
 
@@ -324,7 +390,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tab 2: My Posted Gigs (Seller View) */}
+        {/* Tab 2: My Posted Gigs */}
         {activeTab === 'gigs' && (
           <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-gray-100 gap-4">
@@ -390,6 +456,7 @@ export default function Dashboard() {
                     <th className="pb-3">Peer Student</th>
                     <th className="pb-3">Amount</th>
                     <th className="pb-3">Status</th>
+                    <th className="pb-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
@@ -403,6 +470,21 @@ export default function Dashboard() {
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${ord.statusColor}`}>
                           {ord.status}
                         </span>
+                      </td>
+                      <td className="py-4 text-right">
+                        {ord.type.includes('Seller') && ord.status === 'In Progress' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDeliveryModal(ord)}
+                            className="px-3 py-1 bg-[#007a4d] hover:bg-[#006640] text-white rounded-lg text-xs font-bold shadow-sm transition-all"
+                          >
+                            Deliver Work
+                          </button>
+                        ) : ord.status === 'Delivered' ? (
+                          <span className="text-[11px] text-blue-600 font-semibold">Under Client Review</span>
+                        ) : (
+                          <span className="text-[11px] text-gray-400">No Action Required</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -490,6 +572,101 @@ export default function Dashboard() {
         )}
 
       </div>
+
+      {/* ---------------- 5. Order Deliverable Submission Modal ---------------- */}
+      {isDeliveryModalOpen && selectedOrderForDelivery && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-xl border border-gray-100 space-y-6 relative animate-in fade-in zoom-in-95 duration-150">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-gray-100">
+              <div>
+                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Deliver Work & Complete Task
+                </span>
+                <h2 className="text-lg font-extrabold text-gray-900 mt-1">
+                  Deliver for: {selectedOrderForDelivery.id}
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Client: <strong className="text-gray-800">{selectedOrderForDelivery.peer}</strong> • Value: ${selectedOrderForDelivery.amount}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseDeliveryModal}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitDelivery} className="space-y-4">
+              {/* Deliverable Work Link */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Deliverable Link (GitHub / Google Drive / Figma / Preview URL) *
+                </label>
+                <div className="relative">
+                  <Link2 className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="url"
+                    required
+                    value={deliveryWorkUrl}
+                    onChange={(e) => setDeliveryWorkUrl(e.target.value)}
+                    placeholder="https://github.com/... or https://drive.google.com/..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800"
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Make sure shareable links are set to "Anyone with the link can view".
+                </p>
+              </div>
+
+              {/* Delivery Notes */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Delivery Message & Notes for Client *
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={deliveryNotes}
+                  onChange={(e) => setDeliveryNotes(e.target.value)}
+                  placeholder="Summarize the completed deliverables, setup instructions, or notes on how you implemented the project..."
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800"
+                />
+              </div>
+
+              {/* Security Badge */}
+              <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-800">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Once submitted, the buyer gets 3 days to inspect and release the escrow funds.</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseDeliveryModal}
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl font-bold text-xs shadow-sm flex items-center gap-2 active:scale-95 transition-all"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Submit Deliverable</span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

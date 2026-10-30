@@ -1,57 +1,97 @@
-import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ShieldCheck,
   Star,
   GraduationCap,
-  MapPin,
-  Calendar,
-  Clock,
-  CheckCircle2,
-  ExternalLink,
   MessageSquare,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle2
 } from 'lucide-react';
 
 export default function StudentProfile() {
   const { id } = useParams();
 
-  // Dummy Student Public Data
-  const student = {
-    id: id || 'std-001',
-    name: 'Dulaksha Nipun',
-    university: 'South Eastern University of Sri Lanka',
-    faculty: 'Faculty of Technology',
-    major: 'BSc (Hons) in ICT',
-    studentIdVerified: true,
-    rating: 4.9,
-    reviewsCount: 38,
-    ordersCompleted: 42,
-    memberSince: 'March 2026',
-    responseTime: '< 1 Hour',
-    bio: 'Passionate ICT undergraduate specializing in React, Node.js, and Networking. Experienced in delivering production-ready assignments, responsive web portals, and coursework tutoring for university peers.',
-    skills: ['React.js', 'Tailwind CSS', 'Node.js', 'Express', 'Java', 'Networking (VLSM)', 'UI/UX Design'],
-    gigs: [
-      {
-        id: 1,
-        title: 'Responsive React & Tailwind Web App Development',
-        category: 'Coding & Tech',
-        price: 35,
-        rating: 5.0,
-        reviews: 24,
-        image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=400&auto=format&fit=crop'
-      },
-      {
-        id: 2,
-        title: 'Computer Networks & Subnetting Problem Tutoring',
-        category: 'Academics & Tutoring',
-        price: 20,
-        rating: 4.9,
-        reviews: 14,
-        image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=400&auto=format&fit=crop'
-      }
-    ]
+  // Multi-Student Mock Database
+  const studentsDb = {
+    'std-001': {
+      id: 'std-001',
+      name: 'Dulaksha Nipun',
+      university: 'South Eastern University of Sri Lanka',
+      faculty: 'Faculty of Technology',
+      major: 'BSc (Hons) in ICT',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop',
+      studentIdVerified: true,
+      rating: 4.9,
+      reviewsCount: 38,
+      ordersCompleted: 42,
+      memberSince: 'March 2026',
+      responseTime: '< 1 Hour',
+      bio: 'Passionate ICT undergraduate specializing in React, Node.js, and Networking. Experienced in delivering clean code assignments, responsive web portals, and peer coursework tutoring.',
+      skills: ['React.js', 'Tailwind CSS', 'Node.js', 'Java', 'Networking (VLSM)', 'UI/UX Design'],
+      gigs: [
+        {
+          id: 1,
+          title: 'Responsive React & Tailwind Web App Development',
+          category: 'Coding & Tech',
+          price: 35,
+          image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=400&auto=format&fit=crop'
+        }
+      ]
+    },
+    'std-002': {
+      id: 'std-002',
+      name: 'Sanduni Fernando',
+      university: 'University of Peradeniya',
+      faculty: 'Faculty of Engineering',
+      major: 'Computer Engineering',
+      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=150&auto=format&fit=crop',
+      studentIdVerified: true,
+      rating: 5.0,
+      reviewsCount: 19,
+      ordersCompleted: 26,
+      memberSince: 'February 2026',
+      responseTime: '< 30 Mins',
+      bio: 'Computer Engineering undergraduate offering 1-on-1 tutoring in Java OOP, Data Structures, Algorithms, and debugging complex runtime errors.',
+      skills: ['Java', 'OOP', 'Data Structures & Algorithms', 'C++', 'Python'],
+      gigs: [
+        {
+          id: 2,
+          title: 'Object-Oriented Programming (Java) & DSA Tutoring',
+          category: 'Academics & Tutoring',
+          price: 20,
+          image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=400&auto=format&fit=crop'
+        }
+      ]
+    },
+    'std-003': {
+      id: 'std-003',
+      name: 'Kavindu Perera',
+      university: 'University of Moratuwa',
+      faculty: 'Faculty of Information Technology',
+      major: 'BSc (Hons) in IT & Management',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop',
+      studentIdVerified: true,
+      rating: 4.8,
+      reviewsCount: 27,
+      ordersCompleted: 35,
+      memberSince: 'January 2026',
+      responseTime: '< 2 Hours',
+      bio: 'Creative designer specializing in university event branding, club t-shirts, modern social media banners, and print-ready vector emblems.',
+      skills: ['Adobe Illustrator', 'Photoshop', 'Vector Art', 'Branding', 'Figma'],
+      gigs: [
+        {
+          id: 3,
+          title: 'Minimalist Club Event Posters & Vector Badges',
+          category: 'Graphics & UI/UX',
+          price: 15,
+          image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?q=80&w=400&auto=format&fit=crop'
+        }
+      ]
+    }
   };
+
+  // Click කරපු ID එකට අදාළ ශිෂ්‍යයා තෝරාගැනීම (නොමැති නම් default ලෙස std-001)
+  const student = studentsDb[id] || studentsDb['std-001'];
 
   return (
     <div className="min-h-screen bg-gray-50/60 py-10 px-4 sm:px-6 lg:px-8 font-sans">
@@ -66,12 +106,12 @@ export default function StudentProfile() {
           <span>Back to Browse Gigs</span>
         </Link>
 
-        {/* ---------------- Top Profile Header ---------------- */}
+        {/* Top Profile Header */}
         <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
               <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop"
+                src={student.avatar}
                 alt={student.name}
                 className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover ring-4 ring-[#007a4d]/10"
               />
@@ -139,7 +179,7 @@ export default function StudentProfile() {
           </div>
         </div>
 
-        {/* ---------------- About & Skills ---------------- */}
+        {/* About & Skills */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 bg-white rounded-3xl border border-gray-100 p-6 sm:p-7 shadow-sm space-y-4">
             <h2 className="text-base font-extrabold text-gray-900">About Me</h2>
@@ -162,7 +202,6 @@ export default function StudentProfile() {
             </div>
           </div>
 
-          {/* Verification Box */}
           <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm space-y-4">
             <h2 className="text-base font-extrabold text-gray-900">Campus Verification</h2>
             <ul className="space-y-3 text-xs">
@@ -182,7 +221,7 @@ export default function StudentProfile() {
           </div>
         </div>
 
-        {/* ---------------- Active Gigs by this Student ---------------- */}
+        {/* Active Gigs by this Student */}
         <div className="space-y-4">
           <h2 className="text-lg font-extrabold text-gray-900">Gigs by {student.name}</h2>
           
