@@ -15,6 +15,7 @@ import GigDetails from './pages/GigDetails';
 // Student Pages
 import Dashboard from './pages/Student/Dashboard';
 import CreateGig from './pages/Student/CreateGig';
+import Messages from './pages/Student/Messages';
 
 // Client Pages
 import ClientDashboard from './pages/Client/ClientDashboard';
@@ -41,6 +42,7 @@ function App() {
             <Route path="/stddashboard" element={<Dashboard />} />
             <Route path="/create-gig" element={<CreateGig />} />
             <Route path="/browse-jobs" element={<BrowseJobs />} />
+            <Route path="/messages" element={<Messages />} />
 
             {/* Client Routes */}
             <Route path="/clientdashboard" element={<ClientDashboard />} />

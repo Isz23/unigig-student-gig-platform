@@ -148,13 +148,12 @@ export default function StudentProfile() {
                 <p className="text-[11px] text-gray-400">({student.reviewsCount} Client Reviews)</p>
               </div>
 
-              <button
-                type="button"
-                className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Contact Peer</span>
-              </button>
+               <Link to="/messages"
+                  className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 active:scale-95 transition-all"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Contact Peer</span>
+                </Link>
             </div>
           </div>
 
