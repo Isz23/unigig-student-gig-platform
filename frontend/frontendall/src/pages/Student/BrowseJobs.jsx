@@ -38,6 +38,7 @@ export default function BrowseJobs() {
       budget: 50.0,
       deadline: 'Nov 05, 2026',
       client: {
+        id: 'cl-101',
         name: 'Kavindu Perera',
         university: 'University of Moratuwa',
         role: 'IEEE Student Branch',
@@ -55,6 +56,7 @@ export default function BrowseJobs() {
       budget: 30.0,
       deadline: 'Oct 31, 2026',
       client: {
+        id: 'cl-102',
         name: 'Sanduni Fernando',
         university: 'University of Peradeniya',
         role: 'Faculty of Engineering',
@@ -72,6 +74,7 @@ export default function BrowseJobs() {
       budget: 25.0,
       deadline: 'Nov 02, 2026',
       client: {
+        id: 'cl-103',
         name: 'Tharindu Wickramasinghe',
         university: 'SLIIT',
         role: 'Computing Faculty',
@@ -89,6 +92,7 @@ export default function BrowseJobs() {
       budget: 40.0,
       deadline: 'Nov 07, 2026',
       client: {
+        id: 'cl-104',
         name: 'Ahamed Musfira',
         university: 'SEUSL',
         role: 'Student Union',
@@ -262,20 +266,26 @@ export default function BrowseJobs() {
 
                 {/* Footer: Client Info & Submit Bid Button */}
                 <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gray-100 text-[#007a4d] flex items-center justify-center font-bold text-xs uppercase">
+                  {/* Clickable Client Card linking to /client/:id */}
+                  <Link
+                    to={`/client/${job.client.id}`}
+                    className="flex items-center gap-3 hover:opacity-85 transition-opacity group"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-gray-100 text-[#007a4d] flex items-center justify-center font-bold text-xs uppercase group-hover:bg-emerald-50 transition-colors">
                       {job.client.name.substring(0, 2)}
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-gray-900">{job.client.name}</span>
+                        <span className="text-xs font-bold text-gray-900 group-hover:text-[#007a4d] transition-colors">
+                          {job.client.name}
+                        </span>
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                       </div>
                       <p className="text-[11px] text-gray-500">
                         {job.client.role} • {job.client.university}
                       </p>
                     </div>
-                  </div>
+                  </Link>
 
                   <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
                     <div className="text-right text-xs">
