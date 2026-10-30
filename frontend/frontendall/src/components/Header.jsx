@@ -9,6 +9,7 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Header() {
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
@@ -20,7 +21,7 @@ export default function Header() {
   // දැනට තිබෙන URL Path එක ලබා ගැනීම
   const location = useLocation();
 
-  // /login, /signup, dashboards හෝ task-post පිටුවලදී Categories Bar එක සඟවන්න (Hide කරන්න)
+  // /login, /signup, dashboards, messages හෝ task-post පිටුවලදී Categories Bar එක සඟවන්න (Hide කරන්න)
   const hideCategoryBar =
     location.pathname === '/login' ||
     location.pathname === '/signup' ||
@@ -28,7 +29,8 @@ export default function Header() {
     location.pathname.startsWith('/clientdashboard') ||
     location.pathname.startsWith('/create-gig') ||
     location.pathname.startsWith('/post-job') ||
-    location.pathname.startsWith('/browse-jobs');
+    location.pathname.startsWith('/browse-jobs') ||
+    location.pathname.startsWith('/messages');
 
   // Category list for the bottom navigation bar
   const categories = [
@@ -124,12 +126,12 @@ export default function Header() {
         </div>
 
         {/* Desktop Navigation & Auth Buttons */}
-        <div className="hidden lg:flex items-center gap-4 xl:gap-5 text-sm font-medium">
+        <div className="hidden lg:flex items-center gap-3 xl:gap-4 text-sm font-medium">
           <Link
             to="/"
             onClick={() => setActiveTab('Home')}
-            className={`px-3.5 py-1.5 rounded-full font-semibold transition-colors ${
-              activeTab === 'Home'
+            className={`px-3 py-1.5 rounded-full font-semibold transition-colors ${
+              location.pathname === '/'
                 ? 'bg-[#e8f7f0] text-[#00875a]'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
@@ -141,21 +143,20 @@ export default function Header() {
             to="/browse"
             onClick={() => setActiveTab('Browse Gigs')}
             className={`transition-colors ${
-              activeTab === 'Browse Gigs'
-                ? 'bg-[#e8f7f0] text-[#00875a] px-3.5 py-1.5 rounded-full font-semibold'
+              location.pathname === '/browse'
+                ? 'bg-[#e8f7f0] text-[#00875a] px-3 py-1.5 rounded-full font-semibold'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             Browse Gigs
           </Link>
 
-          {/* අලුතින් එක් කළ Bidding / Task Requests Link */}
           <Link
             to="/browse-jobs"
             onClick={() => setActiveTab('Task Requests')}
             className={`transition-colors flex items-center gap-1 ${
-              activeTab === 'Task Requests'
-                ? 'bg-[#e8f7f0] text-[#00875a] px-3.5 py-1.5 rounded-full font-semibold'
+              location.pathname === '/browse-jobs'
+                ? 'bg-[#e8f7f0] text-[#00875a] px-3 py-1.5 rounded-full font-semibold'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -186,22 +187,31 @@ export default function Header() {
             Log In
           </Link>
 
+          {/* Sign Up Button */}
           <Link
             to="/signup"
             className="bg-[#007a4d] hover:bg-[#006640] text-white font-semibold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 text-xs"
           >
             Sign Up
           </Link>
+
+          {/* 🔔 Notification Dropdown - Sign Up බොත්තමට දකුණු පසින් */}
+          <div className="pl-1 border-l border-gray-100">
+            <NotificationDropdown />
+          </div>
         </div>
 
         {/* Mobile Menu Button */}
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="lg:hidden p-2 text-gray-600 hover:text-gray-900 focus:outline-none"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="lg:hidden flex items-center gap-1">
+          <NotificationDropdown />
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 text-gray-600 hover:text-gray-900 focus:outline-none"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {/* ---------------- 3. Bottom Category Bar (Dashboard & Auth පිටුවලදී Hide වේ) ---------------- */}
@@ -235,7 +245,7 @@ export default function Header() {
         </div>
       )}
 
-      {/* ---------------- Mobile Menu Dropdown ---------------- */}
+      {/* ---------------- 4. Mobile Menu Dropdown ---------------- */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-gray-200 px-4 py-4 space-y-4 bg-white">
           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl overflow-hidden p-1">
@@ -257,7 +267,7 @@ export default function Header() {
                 setMobileMenuOpen(false);
               }}
               className={`text-left font-semibold py-2.5 px-3 rounded-lg transition-colors ${
-                activeTab === 'Home'
+                location.pathname === '/'
                   ? 'bg-[#e8f7f0] text-[#00875a]'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
@@ -272,7 +282,7 @@ export default function Header() {
                 setMobileMenuOpen(false);
               }}
               className={`text-left font-semibold py-2.5 px-3 rounded-lg transition-colors ${
-                activeTab === 'Browse Gigs'
+                location.pathname === '/browse'
                   ? 'bg-[#e8f7f0] text-[#00875a]'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
@@ -280,7 +290,6 @@ export default function Header() {
               Browse Gigs
             </Link>
 
-            {/* Mobile Task Requests Link */}
             <Link
               to="/browse-jobs"
               onClick={() => {
@@ -288,7 +297,7 @@ export default function Header() {
                 setMobileMenuOpen(false);
               }}
               className={`text-left font-semibold py-2.5 px-3 rounded-lg transition-colors ${
-                activeTab === 'Task Requests'
+                location.pathname === '/browse-jobs'
                   ? 'bg-[#e8f7f0] text-[#00875a]'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
@@ -338,4 +347,4 @@ export default function Header() {
       )}
     </header>
   );
-}3
+}
