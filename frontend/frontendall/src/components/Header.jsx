@@ -20,11 +20,15 @@ export default function Header() {
   // දැනට තිබෙන URL Path එක ලබා ගැනීම
   const location = useLocation();
 
-  // /login, /signup හෝ /stddashboard පිටුවලදී Categories Bar එක සඟවන්න (Hide කරන්න)
+  // /login, /signup, dashboards හෝ task-post පිටුවලදී Categories Bar එක සඟවන්න (Hide කරන්න)
   const hideCategoryBar =
     location.pathname === '/login' ||
     location.pathname === '/signup' ||
-    location.pathname.startsWith('/stddashboard');
+    location.pathname.startsWith('/stddashboard') ||
+    location.pathname.startsWith('/clientdashboard') ||
+    location.pathname.startsWith('/create-gig') ||
+    location.pathname.startsWith('/post-job') ||
+    location.pathname.startsWith('/browse-jobs');
 
   // Category list for the bottom navigation bar
   const categories = [
@@ -120,11 +124,11 @@ export default function Header() {
         </div>
 
         {/* Desktop Navigation & Auth Buttons */}
-        <div className="hidden lg:flex items-center gap-6 text-sm font-medium">
+        <div className="hidden lg:flex items-center gap-4 xl:gap-5 text-sm font-medium">
           <Link
             to="/"
             onClick={() => setActiveTab('Home')}
-            className={`px-4 py-1.5 rounded-full font-semibold transition-colors ${
+            className={`px-3.5 py-1.5 rounded-full font-semibold transition-colors ${
               activeTab === 'Home'
                 ? 'bg-[#e8f7f0] text-[#00875a]'
                 : 'text-gray-600 hover:text-gray-900'
@@ -138,23 +142,53 @@ export default function Header() {
             onClick={() => setActiveTab('Browse Gigs')}
             className={`transition-colors ${
               activeTab === 'Browse Gigs'
-                ? 'bg-[#e8f7f0] text-[#00875a] px-4 py-1.5 rounded-full font-semibold'
+                ? 'bg-[#e8f7f0] text-[#00875a] px-3.5 py-1.5 rounded-full font-semibold'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
             Browse Gigs
           </Link>
 
+          {/* අලුතින් එක් කළ Bidding / Task Requests Link */}
+          <Link
+            to="/browse-jobs"
+            onClick={() => setActiveTab('Task Requests')}
+            className={`transition-colors flex items-center gap-1 ${
+              activeTab === 'Task Requests'
+                ? 'bg-[#e8f7f0] text-[#00875a] px-3.5 py-1.5 rounded-full font-semibold'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <span>Task Requests</span>
+          </Link>
+
+          <div className="h-4 w-px bg-gray-200"></div>
+
+          {/* Dashboards Switcher Links */}
+          <Link
+            to="/stddashboard"
+            className="px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+          >
+            Student Hub
+          </Link>
+
+          <Link
+            to="/clientdashboard"
+            className="px-2.5 py-1 rounded-lg text-xs font-bold text-blue-800 bg-blue-50 hover:bg-blue-100 transition-colors"
+          >
+            Client Hub
+          </Link>
+
           <Link
             to="/login"
-            className="text-gray-700 hover:text-gray-900 font-semibold transition-colors"
+            className="text-gray-700 hover:text-gray-900 font-semibold transition-colors text-xs"
           >
             Log In
           </Link>
 
           <Link
             to="/signup"
-            className="bg-[#007a4d] hover:bg-[#006640] text-white font-semibold px-5 py-2 rounded-xl transition-all shadow-sm active:scale-95"
+            className="bg-[#007a4d] hover:bg-[#006640] text-white font-semibold px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95 text-xs"
           >
             Sign Up
           </Link>
@@ -170,7 +204,7 @@ export default function Header() {
         </button>
       </div>
 
-      {/* ---------------- 3. Bottom Category Bar (Login, Signup & stddashboard පිටුවලදී Hide වේ) ---------------- */}
+      {/* ---------------- 3. Bottom Category Bar (Dashboard & Auth පිටුවලදී Hide වේ) ---------------- */}
       {!hideCategoryBar && (
         <div className="border-t border-gray-100 bg-white">
           <div className="max-w-7xl mx-auto px-4 lg:px-8 py-2.5">
@@ -245,6 +279,42 @@ export default function Header() {
             >
               Browse Gigs
             </Link>
+
+            {/* Mobile Task Requests Link */}
+            <Link
+              to="/browse-jobs"
+              onClick={() => {
+                setActiveTab('Task Requests');
+                setMobileMenuOpen(false);
+              }}
+              className={`text-left font-semibold py-2.5 px-3 rounded-lg transition-colors ${
+                activeTab === 'Task Requests'
+                  ? 'bg-[#e8f7f0] text-[#00875a]'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              Task Requests (Bidding)
+            </Link>
+
+            <hr className="border-gray-100 my-2" />
+
+            {/* Mobile Dashboard Links */}
+            <div className="flex gap-2 py-1">
+              <Link
+                to="/stddashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex-1 text-center py-2 text-xs font-bold text-emerald-800 bg-emerald-50 rounded-xl"
+              >
+                Student Hub
+              </Link>
+              <Link
+                to="/clientdashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex-1 text-center py-2 text-xs font-bold text-blue-800 bg-blue-50 rounded-xl"
+              >
+                Client Hub
+              </Link>
+            </div>
 
             <hr className="border-gray-100 my-2" />
 

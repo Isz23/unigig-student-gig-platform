@@ -16,7 +16,8 @@ import CreateGig from './pages/Student/CreateGig';
 
 // Client Pages
 import ClientDashboard from './pages/Client/ClientDashboard';
-import PostJob from './pages/Client/PostJob'; // අලුතින් එක් කරන ලදී
+import PostJob from './pages/Client/PostJob'; 
+import BrowseJobs from './pages/Student/BrowseJobs';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
             {/* Student Routes */}
             <Route path="/stddashboard" element={<Dashboard />} />
             <Route path="/create-gig" element={<CreateGig />} />
+            <Route path="/browse-jobs" element={<BrowseJobs />} />
 
             {/* Client Routes */}
             <Route path="/clientdashboard" element={<ClientDashboard />} />
