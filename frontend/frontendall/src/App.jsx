@@ -23,6 +23,9 @@ import PostJob from './pages/Client/PostJob';
 import BrowseJobs from './pages/Student/BrowseJobs';
 import ClientProfile from './pages/Client/ClientProfile';
 
+//Admin Pages
+import AdminDashboard from './pages/Admin/AdminDashboard';
+
 function App() {
   return (
     <Router>
@@ -48,6 +51,10 @@ function App() {
             <Route path="/clientdashboard" element={<ClientDashboard />} />
             <Route path="/post-job" element={<PostJob />} />
             <Route path="/client/:id" element={<ClientProfile />} />
+
+            {/* Admin Routes */}
+
+            <Route path = "/AdminDashboard" element = {<AdminDashboard />} />
           </Routes>
         </main>
 
