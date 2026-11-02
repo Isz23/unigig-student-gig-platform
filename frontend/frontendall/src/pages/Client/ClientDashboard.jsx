@@ -9,28 +9,23 @@ import {
   Star,
   ExternalLink,
   ShieldCheck,
-  ChevronRight,
   UserCheck,
   X,
   Check,
   Eye,
-  AlertCircle,
-  FileText,
   MessageSquare,
   Sparkles
 } from 'lucide-react';
 
 export default function ClientDashboard() {
-  const [activeTab, setActiveTab] = useState('tasks'); // 'tasks' | 'activeOrders' | 'completed'
+  const [activeTab, setActiveTab] = useState('tasks');
 
-  // Modals state
   const [selectedJobForBids, setSelectedJobForBids] = useState(null);
   const [inspectDeliverableOrder, setInspectDeliverableOrder] = useState(null);
   const [ratingOrder, setRatingOrder] = useState(null);
   const [ratingValue, setRatingValue] = useState(5);
   const [reviewFeedback, setReviewFeedback] = useState('');
 
-  // 1. Client ගේ Posted Task Requests (Reverse Bidding)
   const [postedJobs, setPostedJobs] = useState([
     {
       id: 'JOB-9481',
@@ -81,7 +76,6 @@ export default function ClientDashboard() {
     }
   ]);
 
-  // 2. Active Orders (Escrow Locked & Deliverable Submitted)
   const [activeOrders, setActiveOrders] = useState([
     {
       orderId: 'ORD-9477',
@@ -101,7 +95,6 @@ export default function ClientDashboard() {
     }
   ]);
 
-  // 3. Completed Orders History
   const [completedOrders, setCompletedOrders] = useState([
     {
       orderId: 'ORD-8812',
@@ -114,7 +107,6 @@ export default function ClientDashboard() {
     }
   ]);
 
-  // Handle Accepting a Bid
   const handleAcceptProposal = (job, proposal) => {
     const newOrder = {
       orderId: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -140,10 +132,8 @@ export default function ClientDashboard() {
     );
 
     setSelectedJobForBids(null);
-    alert(`🎉 Proposal accepted! $${proposal.bidAmount} has been locked into Escrow for ${proposal.studentName}.`);
   };
 
-  // Handle Releasing Escrow Payment
   const handleReleasePayment = (order) => {
     setActiveOrders((prev) => prev.filter((o) => o.orderId !== order.orderId));
 
@@ -166,7 +156,6 @@ export default function ClientDashboard() {
     setRatingOrder(completedEntry);
   };
 
-  // Submit Rating Feedback
   const handleSubmitRating = (e) => {
     e.preventDefault();
     if (ratingOrder) {
@@ -180,24 +169,22 @@ export default function ClientDashboard() {
     }
     setRatingOrder(null);
     setReviewFeedback('');
-    alert('⭐ Thank you for rating the student freelancer!');
   };
 
   return (
     <div className="min-h-screen bg-gray-50/70 py-8 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* ---------------- 1. Client Hub Header ---------------- */}
-        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-800 text-xs font-bold px-3 py-1 rounded-full border border-blue-100">
+            <div className="inline-flex items-center gap-1.5 bg-[#eaf8f1] text-[#007a4d] text-xs font-bold px-3 py-1 rounded-full border border-emerald-100">
               <Briefcase className="w-3.5 h-3.5" />
               <span>Campus Buyer / Client Portal</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
               Client Management Hub
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 max-w-xl">
+            <p className="text-xs sm:text-sm text-gray-500 max-w-xl leading-relaxed">
               Post task requests, review student reverse bids, communicate directly, and release escrow payments upon approval.
             </p>
           </div>
@@ -205,7 +192,7 @@ export default function ClientDashboard() {
           <div className="flex items-center gap-3">
             <Link
               to="/messages"
-              className="px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border border-gray-200 shadow-sm flex items-center gap-2 transition-colors"
+              className="px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border border-gray-200 shadow-2xs flex items-center gap-2 transition-colors"
             >
               <MessageSquare className="w-4 h-4 text-[#007a4d]" />
               <span>Campus Chats</span>
@@ -213,7 +200,7 @@ export default function ClientDashboard() {
 
             <Link
               to="/post-job"
-              className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 active:scale-95 transition-all"
+              className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-2 active:scale-95 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>Post New Task Request</span>
@@ -221,9 +208,8 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        {/* ---------------- 2. Overview Stats ---------------- */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#007a4d] flex items-center justify-center font-bold">
               <DollarSign className="w-6 h-6" />
             </div>
@@ -233,7 +219,7 @@ export default function ClientDashboard() {
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
               <Clock className="w-6 h-6" />
             </div>
@@ -243,7 +229,7 @@ export default function ClientDashboard() {
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
               <CheckCircle2 className="w-6 h-6" />
             </div>
@@ -254,8 +240,7 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        {/* ---------------- 3. Tabs Navigation ---------------- */}
-        <div className="flex border-b border-gray-200 gap-6 text-sm font-semibold">
+        <div className="flex border-b border-gray-200 gap-6 text-xs sm:text-sm font-semibold">
           <button
             type="button"
             onClick={() => setActiveTab('tasks')}
@@ -299,26 +284,25 @@ export default function ClientDashboard() {
           </button>
         </div>
 
-        {/* ---------------- 4. Tab 1: Posted Tasks & Reverse Bids ---------------- */}
         {activeTab === 'tasks' && (
           <div className="space-y-4">
             {postedJobs.map((job) => (
               <div
                 key={job.id}
-                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:border-gray-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-2xs hover:border-gray-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                       {job.id}
                     </span>
-                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                    <span className="text-[10px] font-bold text-[#007a4d] bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
                       {job.category}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                         job.status === 'Open for Bids'
-                          ? 'bg-blue-50 text-blue-700'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-100'
                           : 'bg-gray-100 text-gray-600'
                       }`}
                     >
@@ -340,7 +324,7 @@ export default function ClientDashboard() {
                     <button
                       type="button"
                       onClick={() => setSelectedJobForBids(job)}
-                      className="px-4 py-2 bg-emerald-50 text-[#007a4d] hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      className="px-4 py-2 bg-[#eaf8f1] text-[#007a4d] hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
                     >
                       <UserCheck className="w-4 h-4" />
                       <span>Review {job.proposalsCount} Student Bids</span>
@@ -354,32 +338,30 @@ export default function ClientDashboard() {
           </div>
         )}
 
-        {/* ---------------- 5. Tab 2: Active Orders & Deliverable Inspection ---------------- */}
         {activeTab === 'activeOrders' && (
           <div className="space-y-4">
             {activeOrders.map((order) => (
               <div
                 key={order.orderId}
-                className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-sm space-y-4"
+                className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-2xs space-y-4"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono font-bold text-[#007a4d]">{order.orderId}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#eaf8f1] text-[#007a4d] border border-emerald-100">
                         {order.escrowStatus}
                       </span>
                     </div>
                     <h3 className="text-base font-bold text-gray-900">{order.title}</h3>
                   </div>
 
-                  <div className="text-right">
+                  <div className="text-left sm:text-right">
                     <span className="text-xs text-gray-400">Locked Amount</span>
-                    <h4 className="text-lg font-extrabold text-[#007a4d]">${order.amount}.00</h4>
+                    <h4 className="text-lg font-black text-[#007a4d]">${order.amount}.00</h4>
                   </div>
                 </div>
 
-                {/* Student Info and Actions */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
                   <div className="text-xs text-gray-600">
                     <p>
@@ -390,22 +372,20 @@ export default function ClientDashboard() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Direct Chat with Student */}
                     <Link
                       to="/messages"
-                      className="px-3.5 py-2 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                      className="px-3.5 py-2 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
                       title="Direct Chat with Student"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-[#007a4d]" />
                       <span>Chat</span>
                     </Link>
 
-                    {/* Inspect Deliverable Button */}
                     {order.deliverable ? (
                       <button
                         type="button"
                         onClick={() => setInspectDeliverableOrder(order)}
-                        className="px-4 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                        className="px-4 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all active:scale-95"
                       >
                         <Eye className="w-4 h-4" />
                         <span>Inspect Deliverable</span>
@@ -420,18 +400,17 @@ export default function ClientDashboard() {
           </div>
         )}
 
-        {/* ---------------- 6. Tab 3: Completed Orders History ---------------- */}
         {activeTab === 'completed' && (
           <div className="space-y-4">
             {completedOrders.map((order) => (
               <div
                 key={order.orderId}
-                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-gray-500">{order.orderId}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#eaf8f1] text-[#007a4d] border border-emerald-100">
                       Payment Released
                     </span>
                   </div>
@@ -447,7 +426,7 @@ export default function ClientDashboard() {
                     <h4 className="text-base font-extrabold text-gray-900">${order.amount}.00</h4>
                   </div>
 
-                  <div className="flex items-center gap-1 text-amber-500 bg-amber-50 px-2 py-1 rounded-lg">
+                  <div className="flex items-center gap-1 text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/40">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     <span className="text-xs font-bold">{order.ratingGiven}.0</span>
                   </div>
@@ -459,10 +438,9 @@ export default function ClientDashboard() {
 
       </div>
 
-      {/* ---------------- Modal 1: Review Student Proposals (Bids) ---------------- */}
       {selectedJobForBids && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-xl space-y-5 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-gray-100 space-y-5 animate-in fade-in duration-200">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-gray-900">Review Student Reverse Bids</h3>
@@ -471,7 +449,7 @@ export default function ClientDashboard() {
               <button
                 type="button"
                 onClick={() => setSelectedJobForBids(null)}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -481,18 +459,18 @@ export default function ClientDashboard() {
               {selectedJobForBids.proposals.map((prop) => (
                 <div
                   key={prop.id}
-                  className="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 space-y-3"
+                  className="p-4 sm:p-5 rounded-2xl border border-gray-100 bg-gray-50/50 space-y-3"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <h4 className="text-sm font-bold text-gray-900">{prop.studentName}</h4>
-                      <p className="text-xs text-gray-500">
-                        {prop.university} • <span className="font-mono text-gray-600">{prop.studentReg}</span>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {prop.university} • <span className="font-mono text-gray-600 font-semibold">{prop.studentReg}</span>
                       </p>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-xs text-gray-400">Bid Offer</span>
+                      <span className="text-[11px] text-gray-400 block">Bid Offer</span>
                       <h4 className="text-base font-extrabold text-[#007a4d]">${prop.bidAmount}</h4>
                       <span className="text-[10px] text-gray-500">{prop.deliveryDays}</span>
                     </div>
@@ -502,12 +480,11 @@ export default function ClientDashboard() {
                     "{prop.coverLetter}"
                   </p>
 
-                  {/* Actions: Chat & Accept Bid */}
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <Link
                       to="/messages"
                       onClick={() => setSelectedJobForBids(null)}
-                      className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                      className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-[#007a4d]" />
                       <span>Chat with Student</span>
@@ -516,7 +493,7 @@ export default function ClientDashboard() {
                     <button
                       type="button"
                       onClick={() => handleAcceptProposal(selectedJobForBids, prop)}
-                      className="px-4 py-2 bg-[#007a4d] hover:bg-[#006640] text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                      className="px-4 py-2 bg-[#007a4d] hover:bg-[#006640] text-white text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition-all active:scale-95"
                     >
                       <Check className="w-3.5 h-3.5" />
                       <span>Accept Bid & Hire Student</span>
@@ -529,10 +506,9 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* ---------------- Modal 2: Inspect Deliverable & Release Escrow ---------------- */}
       {inspectDeliverableOrder && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-xl space-y-5">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-gray-100 space-y-5 animate-in fade-in duration-200">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-gray-900">Inspect Student Deliverable</h3>
@@ -541,16 +517,16 @@ export default function ClientDashboard() {
               <button
                 type="button"
                 onClick={() => setInspectDeliverableOrder(null)}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400"
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs text-gray-700">
-              <div className="p-3 bg-gray-50 rounded-xl space-y-1">
+            <div className="space-y-3.5 text-xs text-gray-700">
+              <div className="p-3.5 bg-gray-50 rounded-xl space-y-1 border border-gray-100">
                 <span className="font-bold text-gray-900">Student Submission Note:</span>
-                <p className="italic text-gray-600">{inspectDeliverableOrder.deliverable.note}</p>
+                <p className="italic text-gray-600 leading-relaxed">{inspectDeliverableOrder.deliverable.note}</p>
               </div>
 
               <div className="space-y-2">
@@ -560,35 +536,35 @@ export default function ClientDashboard() {
                     href={inspectDeliverableOrder.deliverable.liveUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-between font-medium text-[#007a4d]"
+                    className="p-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-between font-medium text-[#007a4d] transition-colors"
                   >
-                    <span>{inspectDeliverableOrder.deliverable.liveUrl}</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span className="truncate pr-2">{inspectDeliverableOrder.deliverable.liveUrl}</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                   </a>
 
                   <a
                     href={inspectDeliverableOrder.deliverable.githubUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-between font-medium text-gray-800"
+                    className="p-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-between font-medium text-gray-800 transition-colors"
                   >
-                    <span>{inspectDeliverableOrder.deliverable.githubUrl}</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span className="truncate pr-2">{inspectDeliverableOrder.deliverable.githubUrl}</span>
+                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                   </a>
                 </div>
               </div>
 
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-2 text-emerald-800">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                <span>Releasing payment will immediately transfer ${inspectDeliverableOrder.amount} from Escrow to the student.</span>
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-start gap-2.5 text-emerald-800">
+                <ShieldCheck className="w-4 h-4 shrink-0 text-[#007a4d] mt-0.5" />
+                <span className="leading-relaxed">Releasing payment will immediately transfer ${inspectDeliverableOrder.amount} from Escrow to the student.</span>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
               <button
                 type="button"
                 onClick={() => setInspectDeliverableOrder(null)}
-                className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Close
               </button>
@@ -596,7 +572,7 @@ export default function ClientDashboard() {
               <button
                 type="button"
                 onClick={() => handleReleasePayment(inspectDeliverableOrder)}
-                className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
+                className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs transition-all active:scale-95 flex items-center gap-1.5"
               >
                 <Check className="w-4 h-4" />
                 <span>Approve Work & Release Escrow (${inspectDeliverableOrder.amount})</span>
@@ -606,16 +582,15 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* ---------------- Modal 3: Rate & Review Student ---------------- */}
       {ratingOrder && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4 animate-in fade-in duration-200">
             <div className="text-center space-y-1">
-              <div className="w-12 h-12 bg-emerald-50 text-[#007a4d] rounded-2xl flex items-center justify-center mx-auto mb-2">
+              <div className="w-12 h-12 bg-emerald-50 text-[#007a4d] rounded-2xl flex items-center justify-center mx-auto mb-2 border border-emerald-100">
                 <Sparkles className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-gray-900">Rate Student Freelancer</h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 leading-relaxed">
                 Leave feedback for <strong className="text-gray-800">{ratingOrder.studentName}</strong> to build their campus reputation.
               </p>
             </div>
@@ -649,13 +624,13 @@ export default function ClientDashboard() {
                   value={reviewFeedback}
                   onChange={(e) => setReviewFeedback(e.target.value)}
                   placeholder="e.g. Great code quality, very polite and delivered right on time!"
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800"
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800 leading-relaxed"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95"
+                className="w-full py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs transition-all active:scale-95"
               >
                 Submit Rating & Complete
               </button>
