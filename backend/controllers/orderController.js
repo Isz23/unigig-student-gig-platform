@@ -340,3 +340,78 @@ export const requestRevision = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Buyer leaves a review & rating for a completed order
+// @route   POST /api/orders/:id/review
+// @access  Private (Buyer only)
+export const addOrderReview = async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // 1. Authorization: Only buyer can leave a review
+    if (order.buyer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only the buyer can review this order'
+      });
+    }
+
+    // 2. Validation: Must be completed
+    if (order.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'You can only review completed orders'
+      });
+    }
+
+    // 3. Validation: Prevent duplicate reviews
+    if (order.review && order.review.rating) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this order'
+      });
+    }
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid rating between 1 and 5'
+      });
+    }
+
+    // 4. Attach review to order
+    order.review = {
+      rating: Number(rating),
+      comment: comment || '',
+      createdAt: new Date()
+    };
+    await order.save();
+
+    // 5. Update Gig's average rating if gig exists
+    const gig = await Gig.findById(order.gig);
+    if (gig) {
+      const allGigOrders = await Order.find({
+        gig: gig._id,
+        'review.rating': { $exists: true }
+      });
+
+      const totalRating = allGigOrders.reduce((acc, item) => acc + item.review.rating, 0);
+      gig.rating = Number((totalRating / allGigOrders.length).toFixed(1));
+      gig.reviewCount = allGigOrders.length;
+      await gig.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Review and rating submitted successfully',
+      review: order.review
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
