@@ -289,3 +289,54 @@ export const cancelOrder = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Client requests a revision on delivered work
+// @route   PUT /api/orders/:id/revision
+// @access  Private (Buyer only)
+export const requestRevision = async (req, res) => {
+  try {
+    const { revisionNotes } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // 1. Authorization: Only the buyer can request a revision
+    if (order.buyer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only the buyer can request a revision'
+      });
+    }
+
+    // 2. State Validation: Can only request revision if order is 'delivered'
+    if (order.status !== 'delivered') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot request revision when order status is '${order.status}'. Work must be delivered first.`
+      });
+    }
+
+    if (!revisionNotes) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide revision details or instructions'
+      });
+    }
+
+    // 3. Update order state back to in_progress or revision_requested
+    order.status = 'in_progress';
+    order.revisionNotes = revisionNotes;
+    order.revisionRequestedAt = new Date();
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Revision requested successfully. Order returned to student for updates.',
+      order
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
