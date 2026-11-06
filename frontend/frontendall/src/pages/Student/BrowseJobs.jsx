@@ -21,7 +21,17 @@ export default function BrowseJobs() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  
+
+  // Current Logged-in User
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   // Modal & Bid submission state
   const [selectedJob, setSelectedJob] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,6 +83,20 @@ export default function BrowseJobs() {
   });
 
   const handleOpenBidModal = (job) => {
+    // Client protection
+    const jobClientId = job.client?._id ? job.client._id.toString() : job.client?.toString();
+    const currentUserId = currentUser?._id ? currentUser._id.toString() : currentUser?.id?.toString();
+
+    if (jobClientId === currentUserId) {
+      alert('You cannot bid on your own posted task.');
+      return;
+    }
+
+    if (currentUser?.role === 'client') {
+      alert('Client accounts cannot submit bids. Please use a student account to bid.');
+      return;
+    }
+
     setSelectedJob(job);
     setBidAmount(job.budget?.toString() || '');
     setDeliveryDays(3);
@@ -111,10 +135,10 @@ export default function BrowseJobs() {
       if (res.data?.success) {
         alert('🎉 Proposal submitted successfully! The client will review your bid.');
         handleCloseModal();
-        fetchJobs(); // Re-fetch to update proposal counts live
+        fetchJobs();
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to submit proposal. Ensure you are logged in as a student.');
+      alert(err.response?.data?.message || 'Failed to submit proposal.');
     } finally {
       setSubmitting(false);
     }
@@ -197,9 +221,7 @@ export default function BrowseJobs() {
             </div>
           ) : filteredJobs.length === 0 ? (
             <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center max-w-md mx-auto shadow-2xs space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center mx-auto">
-                <Briefcase className="w-6 h-6" />
-              </div>
+              <Briefcase className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center mx-auto" />
               <h3 className="text-sm font-bold text-gray-900">No Job Requests Found</h3>
               <p className="text-xs text-gray-500 leading-relaxed">
                 Try searching with different keywords or switch categories to view other student task requests.
@@ -210,7 +232,7 @@ export default function BrowseJobs() {
                   setSearchTerm('');
                   setSelectedCategory('All');
                 }}
-                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-[#007a4d] hover:bg-[#00633e] text-white text-xs font-bold rounded-xl transition-all"
+                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-[#007a4d] hover:bg-[#00633e] text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 Reset Search
               </button>
@@ -227,6 +249,11 @@ export default function BrowseJobs() {
               const postedDate = job.createdAt
                 ? new Date(job.createdAt).toLocaleDateString()
                 : 'Recently';
+
+              const jobClientId = job.client?._id ? job.client._id.toString() : job.client?.toString();
+              const currentUserId = currentUser?._id ? currentUser._id.toString() : currentUser?.id?.toString();
+              const isOwnTask = jobClientId === currentUserId;
+              const isClient = currentUser?.role === 'client';
 
               return (
                 <div
@@ -283,14 +310,21 @@ export default function BrowseJobs() {
                         <p className="text-[11px] text-gray-400">Deadline: {formattedDeadline}</p>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleOpenBidModal(job)}
-                        className="px-4 sm:px-5 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-                      >
-                        <span>Submit Proposal</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                      {/* Client Protection / Own Task Restriction */}
+                      {isOwnTask || isClient ? (
+                        <span className="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl text-xs font-bold border border-gray-200">
+                          {isOwnTask ? 'Your Posted Task' : 'Client View Only'}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenBidModal(job)}
+                          className="px-4 sm:px-5 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                        >
+                          <span>Submit Proposal</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
