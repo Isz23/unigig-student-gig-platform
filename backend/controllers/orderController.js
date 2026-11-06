@@ -224,3 +224,68 @@ export const approveAndReleaseEscrow = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Cancel order & refund held escrow funds to buyer
+// @route   PUT /api/orders/:id/cancel
+// @access  Private (Buyer or Seller)
+export const cancelOrder = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const currentUserId = req.user._id.toString();
+    const buyerId = order.buyer.toString();
+    const sellerId = order.seller.toString();
+
+    // 1. Authorization check: Only buyer or seller involved can cancel
+    if (currentUserId !== buyerId && currentUserId !== sellerId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only the buyer or seller of this order can initiate cancellation'
+      });
+    }
+
+    // 2. State validation: Cannot cancel completed or already cancelled orders
+    if (order.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot cancel an order that has already been completed and paid'
+      });
+    }
+
+    if (order.status === 'cancelled') {
+      return res.status(400).json({
+        success: false,
+        message: 'This order is already cancelled'
+      });
+    }
+
+    // 3. Update order status
+    order.status = 'cancelled';
+    order.escrowStatus = 'refunded_to_buyer';
+    order.cancellationReason = reason || 'Order cancelled by user';
+    order.cancelledBy = req.user._id;
+    await order.save();
+
+    // 4. Reverse Escrow: Deduct from seller's pending escrow & refund buyer's wallet
+    await User.findByIdAndUpdate(sellerId, {
+      $inc: { pendingEscrowBalance: -order.price }
+    });
+
+    await User.findByIdAndUpdate(buyerId, {
+      $inc: { walletBalance: order.price }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Order cancelled successfully. Funds have been refunded from Escrow to Buyer wallet.',
+      order
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

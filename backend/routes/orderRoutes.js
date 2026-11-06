@@ -5,7 +5,8 @@ import {
   getSellerOrders,
   getOrderById,
   submitWork,
-  approveAndReleaseEscrow
+  approveAndReleaseEscrow,
+  cancelOrder
 } from '../controllers/orderController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -20,5 +21,6 @@ router.post('/', createOrder);
 router.get('/:id', getOrderById);
 router.put('/:id/submit', submitWork);
 router.put('/:id/approve', approveAndReleaseEscrow);
+router.put('/:id/cancel', cancelOrder);
 
 export default router;
