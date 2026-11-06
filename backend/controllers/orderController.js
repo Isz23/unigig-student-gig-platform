@@ -16,7 +16,7 @@ export const createOrder = async (req, res) => {
 
     // Determine price based on tier (or base price)
     let orderPrice = gig.price || 1500;
-    if (gig.packages && gig.packages[packageTier.toLowerCase()]) {
+    if (gig.packages && gig.packages[packageTier?.toLowerCase()]) {
       orderPrice = gig.packages[packageTier.toLowerCase()].price;
     }
 
@@ -52,22 +52,92 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// @desc    Get current user's orders (both bought and received)
+// @desc    Get logged in buyer's purchases (Buyer Dashboard)
 // @route   GET /api/orders/my-orders
-// @access  Private
+// @access  Private (Buyer)
 export const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({
-      $or: [{ buyer: req.user._id }, { seller: req.user._id }]
-    })
-      .populate('gig', 'title category image')
-      .populate('buyer', 'name email avatar')
+    const orders = await Order.find({ buyer: req.user._id })
+      .populate('gig', 'title category image imageUrl')
       .populate('seller', 'name email avatar studentRegNumber')
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, count: orders.length, orders });
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      data: orders
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch buyer orders',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get orders received by seller (Student/Seller Dashboard)
+// @route   GET /api/orders/seller-orders
+// @access  Private (Seller)
+export const getSellerOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ seller: req.user._id })
+      .populate('gig', 'title category image imageUrl')
+      .populate('buyer', 'name email avatar')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      data: orders
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch seller orders',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get single order details by ID
+// @route   GET /api/orders/:id
+// @access  Private (Buyer or Seller only)
+export const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('gig')
+      .populate('buyer', 'name email avatar')
+      .populate('seller', 'name email avatar studentRegNumber');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    const buyerId = order.buyer._id ? order.buyer._id.toString() : order.buyer.toString();
+    const sellerId = order.seller._id ? order.seller._id.toString() : order.seller.toString();
+    const currentUserId = req.user._id.toString();
+
+    if (buyerId !== currentUserId && sellerId !== currentUserId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to view this order'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: order
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order details',
+      error: error.message
+    });
   }
 };
 
@@ -84,7 +154,10 @@ export const submitWork = async (req, res) => {
     }
 
     if (order.seller.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Unauthorized: Only the assigned student can submit work' });
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only the assigned student can submit work'
+      });
     }
 
     order.submission = {
@@ -118,19 +191,23 @@ export const approveAndReleaseEscrow = async (req, res) => {
     }
 
     if (order.buyer.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Unauthorized: Only the client can approve this order' });
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only the client can approve this order'
+      });
     }
 
     if (order.status === 'completed' || order.escrowStatus === 'released_to_seller') {
-      return res.status(400).json({ success: false, message: 'Payment has already been released for this order' });
+      return res.status(400).json({
+        success: false,
+        message: 'Payment has already been released for this order'
+      });
     }
 
-    // 1. Update order status
     order.status = 'completed';
     order.escrowStatus = 'released_to_seller';
     await order.save();
 
-    // 2. Transfer funds: pendingEscrowBalance -> walletBalance
     await User.findByIdAndUpdate(order.seller, {
       $inc: {
         pendingEscrowBalance: -order.price,
