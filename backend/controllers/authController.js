@@ -109,3 +109,80 @@ export const getUserProfile = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Update user profile (Bio, Skills, Avatar, Name)
+// @route   PUT /api/auth/profile
+export const updateUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      user.name = req.body.name || user.name;
+      user.bio = req.body.bio !== undefined ? req.body.bio : user.bio;
+      user.avatar = req.body.avatar || user.avatar;
+      user.skills = req.body.skills || user.skills;
+      user.faculty = req.body.faculty || user.faculty;
+
+      // Password එක update කරනවා නම් පමණක්
+      if (req.body.password) {
+        user.password = req.body.password;
+      }
+
+      const updatedUser = await user.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'Profile updated successfully',
+        user: {
+          _id: updatedUser._id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          role: updatedUser.role,
+          bio: updatedUser.bio,
+          skills: updatedUser.skills,
+          avatar: updatedUser.avatar,
+          faculty: updatedUser.faculty,
+          studentRegNumber: updatedUser.studentRegNumber,
+          verificationStatus: updatedUser.verificationStatus,
+          walletBalance: updatedUser.walletBalance
+        }
+      });
+    } else {
+      res.status(404).json({ success: false, message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Verify student account (Approve / Reject campus status)
+// @route   PUT /api/auth/verify-student/:id
+export const verifyStudentStatus = async (req, res) => {
+  try {
+    const { status } = req.body; // 'verified' or 'rejected'
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.verificationStatus = status;
+    user.isVerifiedStudent = status === 'verified';
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Student verification updated to ${status}`,
+      user: {
+        _id: user._id,
+        name: user.name,
+        studentRegNumber: user.studentRegNumber,
+        verificationStatus: user.verificationStatus,
+        isVerifiedStudent: user.isVerifiedStudent
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
