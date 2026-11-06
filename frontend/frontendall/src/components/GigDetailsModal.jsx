@@ -1,18 +1,35 @@
 import { useState } from 'react';
-import { X, Clock, RotateCcw, Check, ArrowRight, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  X, 
+  Clock, 
+  RotateCcw, 
+  Check, 
+  ArrowRight, 
+  Star, 
+  ShieldCheck, 
+  MessageSquare,
+  Lock,
+  Loader2,
+  AlertCircle
+} from 'lucide-react';
+import API from '../api/axios';
 
 export default function GigDetailsModal({ gig, isOpen, onClose }) {
   if (!isOpen || !gig) return null;
 
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('Basic');
+  const [requirements, setRequirements] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  // Basic, Standard, Premium පැකේජ විස්තර
   const packages = {
     Basic: {
-      name: 'Basic Student Tier',
-      price: gig.price || 20,
-      description: 'Standard deliverable tailored for individual student tasks or assignment help.',
-      delivery: gig.turnaround || '1 Day',
+      name: gig.packages?.basic?.name || 'Basic Student Tier',
+      price: gig.packages?.basic?.price || gig.price || 20,
+      description: gig.packages?.basic?.desc || 'Standard deliverable tailored for individual student tasks or assignment help.',
+      delivery: gig.packages?.basic?.delivery || gig.turnaround || '1 Day',
       revisions: '2 Revisions',
       features: [
         'Source files / raw notes',
@@ -21,10 +38,10 @@ export default function GigDetailsModal({ gig, isOpen, onClose }) {
       ],
     },
     Standard: {
-      name: 'Standard Scholar Tier',
-      price: (gig.price ? gig.price + 15 : 35),
-      description: 'Comprehensive solution with detailed explanations, practice problems, and step-by-step guidance.',
-      delivery: '2 Days',
+      name: gig.packages?.standard?.name || 'Standard Scholar Tier',
+      price: gig.packages?.standard?.price || (gig.price ? Math.round(gig.price * 1.5) : 35),
+      description: gig.packages?.standard?.desc || 'Comprehensive solution with detailed explanations, practice problems, and step-by-step guidance.',
+      delivery: gig.packages?.standard?.delivery || '2 Days',
       revisions: '4 Revisions',
       features: [
         'Source files / raw notes',
@@ -34,10 +51,10 @@ export default function GigDetailsModal({ gig, isOpen, onClose }) {
       ],
     },
     Premium: {
-      name: 'Premium Honor Tier',
-      price: (gig.price ? gig.price + 30 : 50),
-      description: 'Full semester assistance, custom formula cheat-sheets, and 1-on-1 video call session.',
-      delivery: '3 Days',
+      name: gig.packages?.premium?.name || 'Premium Honor Tier',
+      price: gig.packages?.premium?.price || (gig.price ? Math.round(gig.price * 2.2) : 50),
+      description: gig.packages?.premium?.desc || 'Full semester assistance, custom formula cheat-sheets, and 1-on-1 video call session.',
+      delivery: gig.packages?.premium?.delivery || '3 Days',
       revisions: 'Unlimited Revisions',
       features: [
         'Source files / raw notes',
@@ -50,93 +67,170 @@ export default function GigDetailsModal({ gig, isOpen, onClose }) {
 
   const currentPkg = packages[activeTab];
 
+  const handleMessage = () => {
+    onClose();
+    const sellerId = gig.seller?._id || gig.seller?.id || gig.seller;
+    if (sellerId) {
+      navigate(`/messages?peerId=${sellerId}`);
+    } else {
+      navigate('/messages');
+    }
+  };
+
+  const handleOrderSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+
+    if (!token || !savedUser) {
+      alert('Please log in to hire this peer and place an order.');
+      onClose();
+      navigate('/login');
+      return;
+    }
+
+    let user = null;
+    try {
+      user = JSON.parse(savedUser);
+    } catch {
+      user = null;
+    }
+
+    const sellerId = gig.seller?._id || gig.seller?.id || gig.seller;
+    if (user && sellerId && (sellerId === user._id || sellerId === user.id)) {
+      setErrorMsg('You cannot purchase your own gig.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const daysMatch = currentPkg.delivery.match(/\d+/);
+      const deliveryDays = daysMatch ? parseInt(daysMatch[0], 10) : 2;
+
+      const payload = {
+        gigId: gig._id || gig.id,
+        packageTier: activeTab,
+        requirements: requirements.trim() || 'Standard deliverable as per package tier.',
+        deliveryDays,
+      };
+
+      const res = await API.post('/orders', payload);
+
+      if (res.data?.success) {
+        alert('🎉 Order placed successfully! Funds have been secured in Escrow.');
+        onClose();
+        navigate('/clientdashboard');
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(
+        err.response?.data?.message || 'Failed to place order. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      {/* පිටත click කළ විට Modal එක වැසීමට */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="fixed inset-0" onClick={onClose}></div>
 
-      {/* Main Modal Box */}
-      <div className="relative z-10 w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 flex flex-col md:flex-row max-h-[90vh]">
+      <div className="relative z-10 w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 flex flex-col md:flex-row max-h-[92vh]">
         
-        {/* Left Side: Overview & Description */}
-        <div className="w-full md:w-3/5 p-6 sm:p-8 overflow-y-auto border-b md:border-b-0 md:border-r border-gray-100">
+        <div className="w-full md:w-3/5 p-5 sm:p-7 overflow-y-auto border-b md:border-b-0 md:border-r border-gray-100">
           
-          <span className="inline-block bg-[#eaf8f1] text-[#00875a] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-4">
-            {gig.category || 'Academics'}
-          </span>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-block bg-[#eaf8f1] border border-emerald-100 text-[#007a4d] text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+              {gig.category || 'Academics'}
+            </span>
+            <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#007a4d]" />
+              <span>Verified Peer Service</span>
+            </div>
+          </div>
 
-          <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 leading-snug mb-4">
+          <h2 className="text-lg sm:text-2xl font-extrabold text-gray-900 leading-snug mb-4">
             {gig.title}
           </h2>
 
-          {/* Seller Profile */}
-          <div className="flex items-center justify-between flex-wrap gap-3 pb-6 mb-6 border-b border-gray-100">
+          <div className="flex items-center justify-between flex-wrap gap-3 pb-5 mb-5 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <img
                 src={gig.seller?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150&auto=format&fit=crop'}
                 alt={gig.seller?.name}
-                className="w-11 h-11 rounded-full object-cover ring-2 ring-emerald-100"
+                className="w-11 h-11 rounded-full object-cover ring-2 ring-[#007a4d]/25 shrink-0"
               />
               <div>
-                <h4 className="text-sm font-bold text-gray-900">{gig.seller?.name || 'Alex Chen'}</h4>
-                <p className="text-xs text-gray-500">
-                  {gig.seller?.school || 'MIT • Math Major'} • <span className="text-[#00875a] font-semibold">{gig.badge || "Dean's List"}</span>
-                </p>
+                <h4 className="text-sm font-bold text-gray-900">{gig.seller?.name || 'Campus Peer'}</h4>
+                <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                  <span>{gig.seller?.university || gig.seller?.school || 'University Student'}</span>
+                  <span className="text-gray-300">•</span>
+                  <span className="text-[#007a4d] font-semibold">{gig.badge || "Verified Seller"}</span>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 bg-amber-50 px-2.5 py-1 rounded-lg">
+            <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1 rounded-xl border border-amber-200/50">
               <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-              <span className="text-xs font-bold text-gray-800">{gig.rating || '4.9'}</span>
-              <span className="text-[11px] text-gray-500">({gig.reviews || 128} reviews)</span>
+              <span className="text-xs font-bold text-gray-900">{gig.rating || '5.0'}</span>
+              <span className="text-[11px] text-gray-500">({gig.reviewsCount || gig.reviews || 0} reviews)</span>
             </div>
           </div>
 
-          {/* Gig Image */}
-          <div className="rounded-2xl overflow-hidden mb-6 aspect-video bg-gray-100 shadow-inner">
+          <div className="rounded-2xl overflow-hidden mb-5 aspect-video bg-gray-100 shadow-inner">
             <img
-              src={gig.image}
+              src={gig.imageUrl || gig.image}
               alt={gig.title}
               className="w-full h-full object-cover"
             />
           </div>
 
-          {/* About Section */}
-          <div>
+          <div className="mb-6">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
               About This Campus Gig
             </h3>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {gig.description || 'Struggling with limits, derivatives, integrals or multivariable calculus? I will conduct a 1-on-1 tutoring session and give you access to my curated formula sheets and solved past exam questions.'}
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+              {gig.description}
             </p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 flex items-start gap-3">
+            <Lock className="w-4 h-4 text-[#007a4d] shrink-0 mt-0.5" />
+            <div className="text-xs text-gray-600 leading-relaxed">
+              <span className="font-bold text-gray-900">UniGig Escrow Guarantee: </span>
+              Payment remains secured in milestone escrow until you inspect the code, notes, or project deliverables and approve release.
+            </div>
           </div>
         </div>
 
-        {/* Right Side: Pricing & Tier Selector */}
-        <div className="w-full md:w-2/5 p-6 sm:p-8 flex flex-col justify-between bg-white relative">
+        <div className="w-full md:w-2/5 p-5 sm:p-7 flex flex-col justify-between bg-white relative overflow-y-auto">
           
-          {/* Close Button */}
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-5 right-5 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
 
           <div>
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200 mt-2 mb-6">
+            <div className="flex border-b border-gray-200 mt-3 mb-5">
               {['Basic', 'Standard', 'Premium'].map((tab) => (
                 <button
                   key={tab}
                   type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 pb-3 text-sm font-semibold transition-all relative ${
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setErrorMsg('');
+                  }}
+                  className={`flex-1 pb-3 text-xs sm:text-sm font-semibold transition-all relative cursor-pointer ${
                     activeTab === tab
-                      ? 'text-[#00875a] border-b-2 border-[#00875a]'
-                      : 'text-gray-500 hover:text-gray-800'
+                      ? 'text-[#007a4d] border-b-2 border-[#007a4d]'
+                      : 'text-gray-400 hover:text-gray-700'
                   }`}
                 >
                   {tab}
@@ -144,50 +238,88 @@ export default function GigDetailsModal({ gig, isOpen, onClose }) {
               ))}
             </div>
 
-            {/* Price */}
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-base font-bold text-gray-900">{currentPkg.name}</h4>
-              <span className="text-2xl font-extrabold text-[#00875a]">${currentPkg.price}</span>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-bold text-gray-900">{currentPkg.name}</h4>
+              <span className="text-2xl font-black text-[#007a4d]">${currentPkg.price}</span>
             </div>
 
-            <p className="text-xs text-gray-500 leading-relaxed mb-6">
+            <p className="text-xs text-gray-500 leading-relaxed mb-5">
               {currentPkg.description}
             </p>
 
-            {/* Turnaround & Revisions */}
-            <div className="flex items-center gap-6 text-xs font-semibold text-gray-700 mb-6 pb-6 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-[#00875a]" />
+            <div className="flex items-center gap-5 text-xs font-semibold text-gray-700 mb-5 pb-5 border-b border-gray-100">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[#007a4d]" />
                 <span>{currentPkg.delivery}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <RotateCcw className="w-4 h-4 text-[#00875a]" />
+              <div className="flex items-center gap-1.5">
+                <RotateCcw className="w-4 h-4 text-[#007a4d]" />
                 <span>{currentPkg.revisions}</span>
               </div>
             </div>
 
-            {/* What's Included */}
-            <div className="space-y-3 mb-8">
-              <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+            <div className="space-y-2.5 mb-5">
+              <span className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                 What's Included:
               </span>
               {currentPkg.features.map((feature, idx) => (
-                <div key={idx} className="flex items-center gap-2.5 text-xs text-gray-600">
-                  <Check className="w-4 h-4 text-[#00875a] shrink-0" />
+                <div key={idx} className="flex items-center gap-2 text-xs text-gray-600">
+                  <Check className="w-4 h-4 text-[#007a4d] shrink-0" />
                   <span>{feature}</span>
                 </div>
               ))}
             </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                Task Requirements / Notes
+              </label>
+              <textarea
+                rows={2}
+                value={requirements}
+                onChange={(e) => setRequirements(e.target.value)}
+                placeholder="Specific instructions or notes for the peer..."
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800"
+              />
+            </div>
+
+            {errorMsg && (
+              <div className="mb-4 p-2.5 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2 text-xs text-red-600 font-medium">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
           </div>
 
-          {/* Continue Button */}
-          <button
-            type="button"
-            className="w-full bg-[#00875a] hover:bg-[#006640] text-white py-3.5 px-4 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            <span>Continue (${currentPkg.price})</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="space-y-2.5 pt-4 border-t border-gray-100">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={handleOrderSubmit}
+              className="w-full bg-[#007a4d] hover:bg-[#00633e] disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Securing in Escrow...</span>
+                </>
+              ) : (
+                <>
+                  <span>Order Now (${currentPkg.price})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleMessage}
+              className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <MessageSquare className="w-4 h-4 text-[#007a4d]" />
+              <span>Contact Peer First</span>
+            </button>
+          </div>
 
         </div>
 
