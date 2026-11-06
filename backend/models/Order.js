@@ -2,11 +2,6 @@ import mongoose from 'mongoose';
 
 const orderSchema = new mongoose.Schema(
   {
-    gig: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Gig',
-      required: true
-    },
     buyer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -17,13 +12,29 @@ const orderSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
+    // Gigs හරහා එන Orders වලට gig ID එක වැටේ, Custom Job Requests වලදී මෙය optional වේ
+    gig: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Gig',
+      required: false
+    },
+    // Job Post එකක් හරහා ආවේ නම් අදාළ Job ID එක
+    job: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Job',
+      required: false
+    },
     packageTier: {
       type: String,
-      enum: ['Basic', 'Standard', 'Premium'],
-      default: 'Basic'
+      enum: ['Basic', 'Standard', 'Premium', 'Custom Task Request', 'Custom'],
+      default: 'Custom Task Request'
     },
     price: {
       type: Number,
+      required: true
+    },
+    deliveryDeadline: {
+      type: Date,
       required: true
     },
     requirements: {
@@ -32,23 +43,23 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'in_progress', 'delivered', 'completed', 'cancelled'],
+      enum: ['pending', 'in_progress', 'delivered', 'completed', 'cancelled', 'revision_requested'],
       default: 'in_progress'
     },
-    // Escrow Payment Tracking
     escrowStatus: {
       type: String,
       enum: ['held_in_escrow', 'released_to_seller', 'refunded_to_buyer'],
       default: 'held_in_escrow'
     },
-    deliveryDeadline: {
-      type: Date
-    },
-    // Student Work Submission Details
     submission: {
-      workUrl: { type: String, default: '' },
-      notes: { type: String, default: '' },
-      submittedAt: { type: Date }
+      workUrl: String,
+      notes: String,
+      submittedAt: Date
+    },
+    review: {
+      rating: Number,
+      comment: String,
+      createdAt: Date
     }
   },
   {
@@ -56,5 +67,4 @@ const orderSchema = new mongoose.Schema(
   }
 );
 
-const Order = mongoose.model('Order', orderSchema);
-export default Order;
+export default mongoose.model('Order', orderSchema);
