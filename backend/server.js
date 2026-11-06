@@ -3,8 +3,9 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/db.js';
 
-// 1. Gig Routes Import කිරීම
+// Routes Import කිරීම
 import gigRoutes from './routes/gigRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 
@@ -25,7 +26,8 @@ app.get('/', (req, res) => {
   res.send('🚀 UniGig Backend Running...');
 });
 
-// 2. Gig Module Routes Mount කිරීම
+// Routes Mount කිරීම
+app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
 
 const PORT = process.env.PORT || 5000;
