@@ -1,21 +1,23 @@
 import express from 'express';
 import {
   createJob,
-  getAllJobs,
-  getMyPostedJobs,
+  getJobs,
+  getMyJobs,
   submitProposal,
-  acceptProposalAndCreateOrder
+  acceptProposal,
+  deleteJob
 } from '../controllers/jobController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 router.route('/')
-  .get(getAllJobs)
-  .post(protect, createJob);
+  .post(protect, createJob)
+  .get(getJobs);
 
-router.get('/my-jobs', protect, getMyPostedJobs);
+router.get('/my-jobs', protect, getMyJobs);
 router.post('/:id/proposals', protect, submitProposal);
-router.put('/:id/proposals/:proposalId/accept', protect, acceptProposalAndCreateOrder);
+router.put('/:id/proposals/:proposalId/accept', protect, acceptProposal);
+router.delete('/:id', protect, deleteJob);
 
 export default router;
