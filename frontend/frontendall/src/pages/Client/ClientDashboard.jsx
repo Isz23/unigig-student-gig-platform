@@ -1,612 +1,599 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Briefcase,
+  CheckCircle2,
+  ExternalLink,
+  Star,
+  ShieldCheck,
+  Plus,
+  Loader2,
+  Users,
+  X,
+  Trash2,
   DollarSign,
   Clock,
-  Plus,
-  CheckCircle2,
-  Star,
-  ExternalLink,
-  ShieldCheck,
-  UserCheck,
-  X,
-  Check,
-  Eye,
-  MessageSquare,
-  Sparkles
+  Sparkles,
+  ArrowUpRight,
+  AlertCircle,
+  FileText
 } from 'lucide-react';
+import API from '../../api/axios';
 
 export default function ClientDashboard() {
-  const [activeTab, setActiveTab] = useState('tasks');
+  const [activeTab, setActiveTab] = useState('deliverables');
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [jobs, setJobs] = useState([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
 
   const [selectedJobForBids, setSelectedJobForBids] = useState(null);
-  const [inspectDeliverableOrder, setInspectDeliverableOrder] = useState(null);
+  const [acceptingBidId, setAcceptingBidId] = useState(null);
+
+  const [selectedOrderForInspect, setSelectedOrderForInspect] = useState(null);
+  const [approvingOrderId, setApprovingOrderId] = useState(null);
+
   const [ratingOrder, setRatingOrder] = useState(null);
-  const [ratingValue, setRatingValue] = useState(5);
-  const [reviewFeedback, setReviewFeedback] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
-  const [postedJobs, setPostedJobs] = useState([
-    {
-      id: 'JOB-9481',
-      title: 'Need React & Tailwind Landing Page for IEEE Club',
-      category: 'Coding & Tech',
-      budget: 35,
-      deadline: 'Nov 05, 2026',
-      status: 'Open for Bids',
-      proposalsCount: 2,
-      proposals: [
-        {
-          id: 'PROP-01',
-          studentId: 'std-001',
-          studentName: 'Dulaksha Nipun',
-          university: 'South Eastern University of Sri Lanka',
-          studentReg: 'SEU/IS/22/ICT/047',
-          bidAmount: 35,
-          deliveryDays: '3 Days',
-          coverLetter:
-            'I have pre-configured Vite and Tailwind CSS component systems for campus clubs. Can deliver fully mobile-responsive code with clean Git commits.',
-          rating: 4.9,
-          completedGigs: 14
-        },
-        {
-          id: 'PROP-02',
-          studentId: 'std-002',
-          studentName: 'Kasun Bandara',
-          university: 'University of Moratuwa',
-          studentReg: 'UOM/IT/23/089',
-          bidAmount: 30,
-          deliveryDays: '4 Days',
-          coverLetter:
-            'Experienced with frontend styling and Lucide React icons. Ready to start immediately.',
-          rating: 4.7,
-          completedGigs: 8
-        }
-      ]
-    },
-    {
-      id: 'JOB-9482',
-      title: 'Vector Logo Redesign for Tech Summit',
-      category: 'Graphics & UI/UX',
-      budget: 20,
-      deadline: 'Nov 03, 2026',
-      status: 'Assigned',
-      proposalsCount: 1,
-      proposals: []
-    }
-  ]);
-
-  const [activeOrders, setActiveOrders] = useState([
-    {
-      orderId: 'ORD-9477',
-      jobId: 'JOB-9481',
-      title: 'Responsive React & Tailwind Web App',
-      studentName: 'Dulaksha Nipun',
-      studentReg: 'SEU/IS/22/ICT/047',
-      amount: 35,
-      escrowStatus: 'Funds Locked in Escrow',
-      orderStatus: 'Deliverable Submitted',
-      submittedDate: 'Oct 30, 2026 - 04:30 PM',
-      deliverable: {
-        note: 'Completed all components, verified responsiveness on mobile, and resolved build warnings.',
-        liveUrl: 'https://unigig-demo.vercel.app',
-        githubUrl: 'https://github.com/dulaksha/unigig-frontend'
+  const fetchData = async () => {
+    try {
+      const profileRes = await API.get('/auth/profile');
+      if (profileRes.data?.user) {
+        setUser(profileRes.data.user);
+        localStorage.setItem('user', JSON.stringify(profileRes.data.user));
       }
+    } catch (err) {
+      console.error(err);
     }
-  ]);
 
-  const [completedOrders, setCompletedOrders] = useState([
-    {
-      orderId: 'ORD-8812',
-      title: 'Campus Hackathon Banner & Social Pack',
-      studentName: 'Sajini Hansika',
-      amount: 25,
-      completedDate: 'Oct 22, 2026',
-      ratingGiven: 5,
-      review: 'Exceptional creative design and swift turnaround time!'
+    try {
+      setLoadingJobs(true);
+      const jobsRes = await API.get('/jobs/my-jobs');
+      if (jobsRes.data?.success) {
+        setJobs(jobsRes.data.data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingJobs(false);
     }
-  ]);
 
-  const handleAcceptProposal = (job, proposal) => {
-    const newOrder = {
-      orderId: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-      jobId: job.id,
-      title: job.title,
-      studentName: proposal.studentName,
-      studentReg: proposal.studentReg,
-      amount: proposal.bidAmount,
-      escrowStatus: 'Funds Locked in Escrow',
-      orderStatus: 'In Progress',
-      submittedDate: null,
-      deliverable: null
-    };
-
-    setActiveOrders((prev) => [newOrder, ...prev]);
-
-    setPostedJobs((prev) =>
-      prev.map((j) =>
-        j.id === job.id
-          ? { ...j, status: 'Assigned', proposals: [] }
-          : j
-      )
-    );
-
-    setSelectedJobForBids(null);
+    try {
+      setLoadingOrders(true);
+      const ordersRes = await API.get('/orders/my-orders');
+      if (ordersRes.data?.success) {
+        setOrders(ordersRes.data.data || []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingOrders(false);
+    }
   };
 
-  const handleReleasePayment = (order) => {
-    setActiveOrders((prev) => prev.filter((o) => o.orderId !== order.orderId));
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-    const completedEntry = {
-      orderId: order.orderId,
-      title: order.title,
-      studentName: order.studentName,
-      amount: order.amount,
-      completedDate: new Date().toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }),
-      ratingGiven: 5,
-      review: 'Work accepted and payment released.'
-    };
+  const handleDeleteJob = async (jobId) => {
+    if (!window.confirm('Are you sure you want to delete this task request? This action cannot be undone.')) {
+      return;
+    }
 
-    setCompletedOrders((prev) => [completedEntry, ...prev]);
-    setInspectDeliverableOrder(null);
-    setRatingOrder(completedEntry);
+    try {
+      const res = await API.delete(`/jobs/${jobId}`);
+      if (res.data?.success) {
+        alert('Task deleted successfully.');
+        setJobs((prevJobs) => prevJobs.filter((j) => j._id !== jobId));
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to delete task.');
+    }
   };
 
-  const handleSubmitRating = (e) => {
+  const handleAcceptProposal = async (jobId, proposalId) => {
+    if (!window.confirm('Accept this proposal? An escrow order will be created and assigned to this student.')) {
+      return;
+    }
+
+    try {
+      setAcceptingBidId(proposalId);
+      const res = await API.put(`/jobs/${jobId}/proposals/${proposalId}/accept`);
+      if (res.data?.success) {
+        alert('Proposal accepted! Order created in Escrow.');
+        setSelectedJobForBids(null);
+        fetchData();
+        setActiveTab('deliverables');
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to accept proposal.');
+    } finally {
+      setAcceptingBidId(null);
+    }
+  };
+
+  const handleApproveEscrow = async (orderId) => {
+    if (!window.confirm('Are you sure you want to approve this work and release funds to the student?')) {
+      return;
+    }
+
+    try {
+      setApprovingOrderId(orderId);
+      const res = await API.put(`/orders/${orderId}/approve`);
+      if (res.data?.success) {
+        alert('Payment released successfully! Please leave a review.');
+        const approvedOrder = selectedOrderForInspect;
+        setSelectedOrderForInspect(null);
+        fetchData();
+        setRatingOrder(approvedOrder);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to release escrow.');
+    } finally {
+      setApprovingOrderId(null);
+    }
+  };
+
+  const handleSubmitReview = async (e) => {
     e.preventDefault();
-    if (ratingOrder) {
-      setCompletedOrders((prev) =>
-        prev.map((ord) =>
-          ord.orderId === ratingOrder.orderId
-            ? { ...ord, ratingGiven: ratingValue, review: reviewFeedback || 'Great collaboration!' }
-            : ord
-        )
-      );
+    if (!ratingOrder) return;
+
+    try {
+      setSubmittingReview(true);
+      const orderId = ratingOrder._id || ratingOrder.id;
+      const res = await API.post(`/orders/${orderId}/review`, {
+        rating: Number(reviewRating),
+        comment: reviewComment.trim()
+      });
+
+      if (res.data?.success) {
+        alert('Thank you for your feedback!');
+        setRatingOrder(null);
+        setReviewComment('');
+        fetchData();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit review.');
+    } finally {
+      setSubmittingReview(false);
     }
-    setRatingOrder(null);
-    setReviewFeedback('');
   };
+
+  // Calculations for KPI Cards
+  const activeDeliverables = orders.filter(
+    (o) => o.status === 'delivered' || o.status === 'in_progress'
+  );
+  const pastCompleted = orders.filter((o) => o.status === 'completed');
+
+  const escrowLockedAmount = activeDeliverables.reduce(
+    (sum, ord) => sum + (Number(ord.price) || 0),
+    0
+  );
+
+  const totalSpent = pastCompleted.reduce(
+    (sum, ord) => sum + (Number(ord.price) || 0),
+    0
+  );
+
+  const totalProposalsReceived = jobs.reduce(
+    (sum, j) => sum + (j.proposals?.length || 0),
+    0
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50/70 py-8 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-6">
-
-        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 bg-[#eaf8f1] text-[#007a4d] text-xs font-bold px-3 py-1 rounded-full border border-emerald-100">
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>Campus Buyer / Client Portal</span>
+    <div className="min-h-screen bg-[#f8faf9] py-8 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-7">
+        
+        {/* Top Header Card */}
+        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 rounded-full blur-3xl -z-10 opacity-70" />
+          
+          <div className="flex items-center gap-4 sm:gap-5">
+            <img
+              src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop'}
+              alt={user?.name || 'Client Avatar'}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-[#007a4d]/10 shrink-0"
+            />
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  {user?.name || 'Client Dashboard'}
+                </h1>
+                <span className="inline-flex items-center gap-1 bg-[#eaf8f1] border border-emerald-100 text-[#007a4d] text-xs font-bold px-2.5 py-0.5 rounded-full">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#007a4d]" />
+                  <span>Verified Campus Client</span>
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                {user?.university?.toUpperCase() || 'UNIVERSITY'} • <span className="font-semibold text-gray-700 capitalize">{user?.role || 'Client'} Account</span> • Member 047
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-              Client Management Hub
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-500 max-w-xl leading-relaxed">
-              Post task requests, review student reverse bids, communicate directly, and release escrow payments upon approval.
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <Link
+              to="/post-job"
+              className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 bg-[#007a4d] hover:bg-[#006640] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Post a New Task</span>
+            </Link>
+            <Link
+              to="/browse-jobs"
+              className="inline-flex items-center justify-center p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] bg-white transition-colors"
+              title="Browse Marketplace"
+            >
+              <ArrowUpRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+
+        {/* 4 Professional KPI Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
+            <div className="flex items-center justify-between text-gray-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Escrow Locked</span>
+              <DollarSign className="w-4 h-4 text-[#007a4d]" />
+            </div>
+            <div className="text-2xl font-black text-gray-900">${escrowLockedAmount.toFixed(2)}</div>
+            <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" /> Safe in Milestone Vault
             </p>
           </div>
 
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
+            <div className="flex items-center justify-between text-gray-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Active Deliverables</span>
+              <Clock className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="text-2xl font-black text-gray-900">{activeDeliverables.length}</div>
+            <p className="text-[11px] text-amber-700 font-medium">In progress or awaiting review</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
+            <div className="flex items-center justify-between text-gray-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Posted Task Bids</span>
+              <Users className="w-4 h-4 text-blue-500" />
+            </div>
+            <div className="text-2xl font-black text-gray-900">{totalProposalsReceived}</div>
+            <p className="text-[11px] text-gray-500 font-medium">From {jobs.length} campus tasks</p>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
+            <div className="flex items-center justify-between text-gray-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Total Completed</span>
+              <CheckCircle2 className="w-4 h-4 text-[#007a4d]" />
+            </div>
+            <div className="text-2xl font-black text-gray-900">${totalSpent.toFixed(2)}</div>
+            <p className="text-[11px] text-gray-500 font-medium">{pastCompleted.length} gigs paid & rated</p>
+          </div>
+        </div>
+
+        {/* Escrow Security Assurance Banner */}
+        <div className="bg-[#eaf8f1]/60 border border-emerald-100/80 rounded-2xl p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Link
-              to="/messages"
-              className="px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border border-gray-200 shadow-2xs flex items-center gap-2 transition-colors"
+            <div className="w-9 h-9 rounded-xl bg-[#007a4d] text-white flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-gray-900">UniGig 100% Campus Milestone Protection Active</h4>
+              <p className="text-[11px] text-gray-500">
+                Your payment remains securely in escrow until you inspect and approve the completed deliverables.
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex text-[10px] uppercase font-mono font-bold tracking-wider text-[#007a4d] bg-white px-2.5 py-1 rounded-lg border border-emerald-200">
+            Escrow ID: SEC-LOCKED
+          </span>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex border-b border-gray-200 gap-6 text-xs sm:text-sm font-bold overflow-x-auto scrollbar-none">
+          {[
+            { id: 'deliverables', label: `Active Deliverables (${activeDeliverables.length})` },
+            { id: 'tasks', label: `My Posted Tasks (${jobs.length})` },
+            { id: 'completed', label: `Past Completed (${pastCompleted.length})` },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`pb-3 transition-colors relative whitespace-nowrap cursor-pointer ${
+                activeTab === tab.id
+                  ? 'text-[#007a4d] border-b-2 border-[#007a4d]'
+                  : 'text-gray-400 hover:text-gray-700'
+              }`}
             >
-              <MessageSquare className="w-4 h-4 text-[#007a4d]" />
-              <span>Campus Chats</span>
-            </Link>
-
-            <Link
-              to="/post-job"
-              className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-2 active:scale-95 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Post New Task Request</span>
-            </Link>
-          </div>
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#007a4d] flex items-center justify-center font-bold">
-              <DollarSign className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-400">Escrow Protected Funds</p>
-              <h3 className="text-xl font-extrabold text-gray-900">$35.00</h3>
-            </div>
+        {/* TAB 1: ACTIVE DELIVERABLES & PROGRESS */}
+        {activeTab === 'deliverables' && (
+          <div className="space-y-4">
+            {loadingOrders ? (
+              <div className="bg-white rounded-3xl border border-gray-100 p-16 text-center shadow-2xs">
+                <Loader2 className="w-6 h-6 animate-spin text-[#007a4d] mx-auto" />
+              </div>
+            ) : activeDeliverables.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center text-xs text-gray-400 space-y-2">
+                <FileText className="w-8 h-8 text-gray-300 mx-auto" />
+                <p className="font-bold text-gray-700">No active deliverables right now</p>
+                <p>Accept bids from your posted tasks to initiate orders in escrow.</p>
+              </div>
+            ) : (
+              activeDeliverables.map((ord) => {
+                const isDelivered = ord.status === 'delivered';
+                return (
+                  <div
+                    key={ord._id}
+                    className="bg-white rounded-3xl border border-gray-100 p-6 shadow-2xs space-y-5"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono font-bold text-gray-400">ORD-{ord._id?.slice(-4).toUpperCase()}</span>
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            isDelivered
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 animate-pulse'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {isDelivered ? 'Deliverable Ready for Review' : 'Work in Progress'}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-gray-900">
+                          {ord.gig?.title || ord.requirements?.split('\n')[0] || 'Task Order'}
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          Assigned Student: <strong className="text-gray-800">{ord.seller?.name || 'Verified Student'}</strong> • Amount: <strong className="text-[#007a4d]">${ord.price}</strong>
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start sm:self-center">
+                        {isDelivered ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderForInspect(ord)}
+                            className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            <span>Inspect & Approve</span>
+                          </button>
+                        ) : (
+                          <div className="text-right">
+                            <span className="text-xs font-bold text-gray-600 block">Funds Held in Escrow</span>
+                            <span className="text-[11px] text-gray-400">Pending student submission</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Visual Milestone Stepper */}
+                    <div className="pt-3 border-t border-gray-100">
+                      <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-bold">
+                        <div className="text-[#007a4d]">1. Escrow Funded ✓</div>
+                        <div className={ord.status ? 'text-[#007a4d]' : 'text-gray-300'}>2. In Progress ✓</div>
+                        <div className={isDelivered ? 'text-[#007a4d]' : 'text-gray-300'}>3. Deliverable Submitted</div>
+                        <div className="text-gray-300">4. Payout Released</div>
+                      </div>
+                      <div className="w-full bg-gray-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div
+                          className="bg-[#007a4d] h-full transition-all duration-500"
+                          style={{ width: isDelivered ? '75%' : '50%' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
+        )}
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-              <Clock className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-400">Active Campus Projects</p>
-              <h3 className="text-xl font-extrabold text-gray-900">{activeOrders.length} In Progress</h3>
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-400">Completed Jobs</p>
-              <h3 className="text-xl font-extrabold text-gray-900">{completedOrders.length} Approved</h3>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex border-b border-gray-200 gap-6 text-xs sm:text-sm font-semibold">
-          <button
-            type="button"
-            onClick={() => setActiveTab('tasks')}
-            className={`pb-3 transition-colors relative flex items-center gap-2 ${
-              activeTab === 'tasks' ? 'text-[#007a4d]' : 'text-gray-400 hover:text-gray-700'
-            }`}
-          >
-            <span>My Posted Tasks ({postedJobs.length})</span>
-            {activeTab === 'tasks' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007a4d]" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('activeOrders')}
-            className={`pb-3 transition-colors relative flex items-center gap-2 ${
-              activeTab === 'activeOrders' ? 'text-[#007a4d]' : 'text-gray-400 hover:text-gray-700'
-            }`}
-          >
-            <span>Active Deliverables ({activeOrders.length})</span>
-            {activeOrders.some((o) => o.orderStatus === 'Deliverable Submitted') && (
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            )}
-            {activeTab === 'activeOrders' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007a4d]" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('completed')}
-            className={`pb-3 transition-colors relative flex items-center gap-2 ${
-              activeTab === 'completed' ? 'text-[#007a4d]' : 'text-gray-400 hover:text-gray-700'
-            }`}
-          >
-            <span>Past Completed ({completedOrders.length})</span>
-            {activeTab === 'completed' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007a4d]" />
-            )}
-          </button>
-        </div>
-
+        {/* TAB 2: MY POSTED TASKS */}
         {activeTab === 'tasks' && (
           <div className="space-y-4">
-            {postedJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-2xs hover:border-gray-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                      {job.id}
-                    </span>
-                    <span className="text-[10px] font-bold text-[#007a4d] bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
-                      {job.category}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        job.status === 'Open for Bids'
-                          ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {job.status}
-                    </span>
-                  </div>
-
-                  <h3 className="text-sm sm:text-base font-bold text-gray-900">{job.title}</h3>
-
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <span className="font-semibold text-gray-800">Budget: ${job.budget}</span>
-                    <span>•</span>
-                    <span>Deadline: {job.deadline}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  {job.proposalsCount > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedJobForBids(job)}
-                      className="px-4 py-2 bg-[#eaf8f1] text-[#007a4d] hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-                    >
-                      <UserCheck className="w-4 h-4" />
-                      <span>Review {job.proposalsCount} Student Bids</span>
-                    </button>
-                  ) : (
-                    <span className="text-xs text-gray-400 italic">No proposals yet</span>
-                  )}
-                </div>
+            {loadingJobs ? (
+              <div className="bg-white rounded-3xl border border-gray-100 p-16 text-center shadow-2xs">
+                <Loader2 className="w-6 h-6 animate-spin text-[#007a4d] mx-auto" />
               </div>
-            ))}
-          </div>
-        )}
+            ) : jobs.length === 0 ? (
+              <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center shadow-2xs space-y-3">
+                <Briefcase className="w-10 h-10 text-gray-300 mx-auto" />
+                <h3 className="text-sm font-bold text-gray-800">You haven't posted any tasks yet</h3>
+                <p className="text-xs text-gray-400">Post assignments, club websites, or design tasks to receive student proposals.</p>
+                <Link
+                  to="/post-job"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#007a4d] text-white text-xs font-bold rounded-xl hover:bg-[#006640] transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Post Your First Task</span>
+                </Link>
+              </div>
+            ) : (
+              jobs.map((job) => {
+                const displayId = `JOB-${job._id?.slice(-4).toUpperCase()}`;
+                const proposalsCount = job.proposals?.length || 0;
+                const formattedDeadline = job.deadline
+                  ? new Date(job.deadline).toLocaleDateString()
+                  : 'Flexible';
 
-        {activeTab === 'activeOrders' && (
-          <div className="space-y-4">
-            {activeOrders.map((order) => (
-              <div
-                key={order.orderId}
-                className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-2xs space-y-4"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-[#007a4d]">{order.orderId}</span>
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#eaf8f1] text-[#007a4d] border border-emerald-100">
-                        {order.escrowStatus}
-                      </span>
+                return (
+                  <div
+                    key={job._id}
+                    className="bg-white rounded-3xl border border-gray-100 p-5 sm:p-6 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono font-bold text-gray-400">{displayId}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#007a4d] bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
+                          {job.category}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          job.status === 'open'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}>
+                          {job.status === 'open' ? 'Open for Bids' : 'Assigned to Student'}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-gray-900">{job.title}</h3>
+                      <p className="text-xs text-gray-500">
+                        Budget: <strong className="text-gray-800">${job.budget}</strong> • Deadline: {formattedDeadline}
+                      </p>
                     </div>
-                    <h3 className="text-base font-bold text-gray-900">{order.title}</h3>
-                  </div>
 
-                  <div className="text-left sm:text-right">
-                    <span className="text-xs text-gray-400">Locked Amount</span>
-                    <h4 className="text-lg font-black text-[#007a4d]">${order.amount}.00</h4>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-                  <div className="text-xs text-gray-600">
-                    <p>
-                      Assigned Student:{' '}
-                      <strong className="text-gray-900">{order.studentName}</strong> ({order.studentReg})
-                    </p>
-                    <p className="text-gray-400 mt-0.5">Status: {order.orderStatus}</p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Link
-                      to="/messages"
-                      className="px-3.5 py-2 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
-                      title="Direct Chat with Student"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-[#007a4d]" />
-                      <span>Chat</span>
-                    </Link>
-
-                    {order.deliverable ? (
+                    <div className="flex items-center gap-2 self-end sm:self-center">
                       <button
                         type="button"
-                        onClick={() => setInspectDeliverableOrder(order)}
-                        className="px-4 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all active:scale-95"
+                        onClick={() => setSelectedJobForBids(job)}
+                        className="px-4 py-2 bg-[#eaf8f1] hover:bg-emerald-100 text-[#007a4d] border border-emerald-200 rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
                       >
-                        <Eye className="w-4 h-4" />
-                        <span>Inspect Deliverable</span>
+                        <Users className="w-4 h-4" />
+                        <span>Review {proposalsCount} Student Bids</span>
                       </button>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">Work in progress</span>
-                    )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteJob(job._id)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl border border-transparent hover:border-red-100 transition-colors cursor-pointer"
+                        title="Delete Task Request"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                );
+              })
+            )}
           </div>
         )}
 
+        {/* TAB 3: PAST COMPLETED ORDERS */}
         {activeTab === 'completed' && (
-          <div className="space-y-4">
-            {completedOrders.map((order) => (
-              <div
-                key={order.orderId}
-                className="bg-white rounded-2xl border border-gray-100 p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-gray-500">{order.orderId}</span>
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#eaf8f1] text-[#007a4d] border border-emerald-100">
-                      Payment Released
+          <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-2xs">
+            <h3 className="text-base font-bold text-gray-900 mb-4">Completed Orders History</h3>
+            {pastCompleted.length === 0 ? (
+              <p className="text-xs text-gray-400">No completed orders yet.</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {pastCompleted.map((ord) => (
+                  <div key={ord._id} className="py-3 flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-gray-900">{ord.gig?.title || 'Custom Task'}</p>
+                      <p className="text-gray-400">Student: {ord.seller?.name} • Paid: ${ord.price}</p>
+                    </div>
+                    <span className="text-[#007a4d] font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" /> Completed & Escrow Paid
                     </span>
                   </div>
-                  <h3 className="text-sm font-bold text-gray-900">{order.title}</h3>
-                  <p className="text-xs text-gray-500">
-                    Completed by <strong className="text-gray-800">{order.studentName}</strong> on {order.completedDate}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4 text-right">
-                  <div>
-                    <span className="text-xs text-gray-400">Total Paid</span>
-                    <h4 className="text-base font-extrabold text-gray-900">${order.amount}.00</h4>
-                  </div>
-
-                  <div className="flex items-center gap-1 text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/40">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span className="text-xs font-bold">{order.ratingGiven}.0</span>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
 
       </div>
 
-      {selectedJobForBids && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-gray-100 space-y-5 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+      {/* Inspect Deliverables Modal */}
+      {selectedOrderForInspect && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-5 relative">
+            <div className="flex items-start justify-between pb-3 border-b border-gray-100">
               <div>
-                <h3 className="text-base font-bold text-gray-900">Review Student Reverse Bids</h3>
-                <p className="text-xs text-gray-500">{selectedJobForBids.title}</p>
+                <span className="text-[10px] font-bold text-[#007a4d] uppercase tracking-wider bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
+                  Inspect Deliverables
+                </span>
+                <h2 className="text-base font-bold text-gray-900 mt-1">
+                  Deliverable for ORD-{selectedOrderForInspect._id?.slice(-4).toUpperCase()}
+                </h2>
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedJobForBids(null)}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                onClick={() => setSelectedOrderForInspect(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
-              {selectedJobForBids.proposals.map((prop) => (
-                <div
-                  key={prop.id}
-                  className="p-4 sm:p-5 rounded-2xl border border-gray-100 bg-gray-50/50 space-y-3"
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Delivered Project URL</label>
+                <a
+                  href={selectedOrderForInspect.submission?.workUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-[#007a4d] underline font-bold break-all flex items-center gap-1"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-gray-900">{prop.studentName}</h4>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {prop.university} • <span className="font-mono text-gray-600 font-semibold">{prop.studentReg}</span>
-                      </p>
-                    </div>
+                  {selectedOrderForInspect.submission?.workUrl}
+                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                </a>
+              </div>
 
-                    <div className="text-right">
-                      <span className="text-[11px] text-gray-400 block">Bid Offer</span>
-                      <h4 className="text-base font-extrabold text-[#007a4d]">${prop.bidAmount}</h4>
-                      <span className="text-[10px] text-gray-500">{prop.deliveryDays}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-gray-700 bg-white p-3 rounded-xl border border-gray-100 italic leading-relaxed">
-                    "{prop.coverLetter}"
-                  </p>
-
-                  <div className="flex items-center justify-end gap-2 pt-1">
-                    <Link
-                      to="/messages"
-                      onClick={() => setSelectedJobForBids(null)}
-                      className="px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-[#007a4d]" />
-                      <span>Chat with Student</span>
-                    </Link>
-
-                    <button
-                      type="button"
-                      onClick={() => handleAcceptProposal(selectedJobForBids, prop)}
-                      className="px-4 py-2 bg-[#007a4d] hover:bg-[#006640] text-white text-xs font-bold rounded-xl shadow-2xs flex items-center gap-1.5 transition-all active:scale-95"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Accept Bid & Hire Student</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {inspectDeliverableOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-gray-100 space-y-5 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div>
-                <h3 className="text-base font-bold text-gray-900">Inspect Student Deliverable</h3>
-                <p className="text-xs text-gray-500">{inspectDeliverableOrder.orderId}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInspectDeliverableOrder(null)}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3.5 text-xs text-gray-700">
-              <div className="p-3.5 bg-gray-50 rounded-xl space-y-1 border border-gray-100">
-                <span className="font-bold text-gray-900">Student Submission Note:</span>
-                <p className="italic text-gray-600 leading-relaxed">{inspectDeliverableOrder.deliverable.note}</p>
-              </div>
-
-              <div className="space-y-2">
-                <span className="font-bold text-gray-900">Verification Links:</span>
-                <div className="flex flex-col gap-2">
-                  <a
-                    href={inspectDeliverableOrder.deliverable.liveUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-between font-medium text-[#007a4d] transition-colors"
-                  >
-                    <span className="truncate pr-2">{inspectDeliverableOrder.deliverable.liveUrl}</span>
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                  </a>
-
-                  <a
-                    href={inspectDeliverableOrder.deliverable.githubUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-between font-medium text-gray-800 transition-colors"
-                  >
-                    <span className="truncate pr-2">{inspectDeliverableOrder.deliverable.githubUrl}</span>
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                  </a>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Student Delivery Notes</label>
+                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl text-xs text-gray-700">
+                  {selectedOrderForInspect.submission?.notes || 'No notes provided.'}
                 </div>
               </div>
-
-              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-start gap-2.5 text-emerald-800">
-                <ShieldCheck className="w-4 h-4 shrink-0 text-[#007a4d] mt-0.5" />
-                <span className="leading-relaxed">Releasing payment will immediately transfer ${inspectDeliverableOrder.amount} from Escrow to the student.</span>
-              </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
               <button
                 type="button"
-                onClick={() => setInspectDeliverableOrder(null)}
-                className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
+                onClick={() => setSelectedOrderForInspect(null)}
+                className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
               >
                 Close
               </button>
-
               <button
                 type="button"
-                onClick={() => handleReleasePayment(inspectDeliverableOrder)}
-                className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs transition-all active:scale-95 flex items-center gap-1.5"
+                disabled={approvingOrderId === selectedOrderForInspect._id}
+                onClick={() => handleApproveEscrow(selectedOrderForInspect._id)}
+                className="px-5 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-xs"
               >
-                <Check className="w-4 h-4" />
-                <span>Approve Work & Release Escrow (${inspectDeliverableOrder.amount})</span>
+                {approvingOrderId === selectedOrderForInspect._id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <span>Approve & Release Escrow</span>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Review & Rating Modal */}
       {ratingOrder && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4 animate-in fade-in duration-200">
-            <div className="text-center space-y-1">
-              <div className="w-12 h-12 bg-emerald-50 text-[#007a4d] rounded-2xl flex items-center justify-center mx-auto mb-2 border border-emerald-100">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">Rate Student Freelancer</h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Leave feedback for <strong className="text-gray-800">{ratingOrder.studentName}</strong> to build their campus reputation.
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmitRating} className="space-y-4">
-              <div className="flex justify-center gap-2 py-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
+            <h3 className="text-base font-bold text-gray-900">Rate Student's Work</h3>
+            <form onSubmit={handleSubmitReview} className="space-y-4">
+              <div className="flex items-center justify-center gap-2 py-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
-                    key={star}
                     type="button"
-                    onClick={() => setRatingValue(star)}
-                    className="p-1 focus:outline-none transition-transform active:scale-90"
+                    key={star}
+                    onClick={() => setReviewRating(star)}
+                    className="p-1 cursor-pointer"
                   >
                     <Star
                       className={`w-7 h-7 ${
-                        star <= ratingValue
+                        star <= reviewRating
                           ? 'fill-amber-400 text-amber-400'
                           : 'text-gray-300'
                       }`}
@@ -614,27 +601,118 @@ export default function ClientDashboard() {
                   </button>
                 ))}
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-                  Public Feedback / Testimonial
-                </label>
-                <textarea
-                  rows={3}
-                  value={reviewFeedback}
-                  onChange={(e) => setReviewFeedback(e.target.value)}
-                  placeholder="e.g. Great code quality, very polite and delivered right on time!"
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800 leading-relaxed"
-                />
+              <textarea
+                required
+                rows={3}
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Share your experience working with this student..."
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d]"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRatingOrder(null)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 cursor-pointer"
+                >
+                  Skip
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReview}
+                  className="px-5 py-2 bg-[#007a4d] text-white rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  {submittingReview ? 'Submitting...' : 'Submit Review'}
+                </button>
               </div>
-
-              <button
-                type="submit"
-                className="w-full py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs transition-all active:scale-95"
-              >
-                Submit Rating & Complete
-              </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Student Bids Modal */}
+      {selectedJobForBids && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-6 relative max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-4 border-b border-gray-100">
+              <div>
+                <span className="text-[10px] font-bold text-[#007a4d] uppercase tracking-wider bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
+                  Student Proposals & Reverse Bids
+                </span>
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 mt-1">
+                  Bids for: {selectedJobForBids.title}
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Budget: <strong className="text-[#007a4d]">${selectedJobForBids.budget}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedJobForBids(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {(!selectedJobForBids.proposals || selectedJobForBids.proposals.length === 0) ? (
+                <div className="py-8 text-center text-xs text-gray-400">
+                  No student proposals submitted yet for this task.
+                </div>
+              ) : (
+                selectedJobForBids.proposals.map((prop) => (
+                  <div
+                    key={prop._id}
+                    className="p-4 rounded-2xl bg-gray-50/70 border border-gray-100 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={prop.student?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'}
+                          alt={prop.student?.name}
+                          className="w-10 h-10 rounded-xl object-cover ring-2 ring-emerald-500/20"
+                        />
+                        <div>
+                          <h4 className="text-xs font-bold text-gray-900">{prop.student?.name}</h4>
+                          <p className="text-[11px] text-gray-400">{prop.student?.university} • {prop.student?.studentRegNumber}</p>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-base font-black text-[#007a4d]">${prop.bidAmount}</span>
+                        <p className="text-[10px] text-gray-400">{prop.deliveryDays} Days delivery</p>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-700 bg-white p-3 rounded-xl border border-gray-100">
+                      "{prop.coverLetter}"
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      {prop.status === 'accepted' ? (
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                          Accepted & In Progress
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={acceptingBidId === prop._id || selectedJobForBids.status !== 'open'}
+                          onClick={() => handleAcceptProposal(selectedJobForBids._id, prop._id)}
+                          className="px-4 py-2 bg-[#007a4d] hover:bg-[#006640] disabled:bg-gray-400 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+                        >
+                          {acceptingBidId === prop._id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <span>Accept Bid & Lock Escrow</span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
