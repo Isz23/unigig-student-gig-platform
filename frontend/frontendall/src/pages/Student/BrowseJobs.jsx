@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -149,8 +148,8 @@ export default function BrowseJobs() {
       <div className="max-w-6xl mx-auto space-y-7">
 
         {/* Header Banner */}
-        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1.5">
+        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs">
+          <div className="space-y-1.5 max-w-3xl">
             <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#007a4d] bg-[#eaf8f1] px-3 py-1 rounded-full border border-emerald-100">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Reverse Bidding Marketplace</span>
@@ -158,17 +157,10 @@ export default function BrowseJobs() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
               Campus Task Requests & Job Board
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
               Browse projects posted by university clients and student clubs. Submit your competitive proposal and work securely through verified milestone Escrow payouts.
             </p>
           </div>
-
-          <Link
-            to="/stddashboard"
-            className="self-start md:self-center px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:border-[#007a4d] hover:text-[#007a4d] hover:bg-emerald-50/40 transition-all shadow-2xs whitespace-nowrap"
-          >
-            My Student Dashboard
-          </Link>
         </div>
 
         {/* Search & Filter Bar */}

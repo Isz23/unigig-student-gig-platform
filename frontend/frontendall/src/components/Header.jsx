@@ -53,16 +53,17 @@ export default function Header() {
     if (user?.role === 'student') {
       navigate('/stddashboard');
     } else {
-      navigate('/signup?role=student');
+      navigate('/login?role=student');
     }
     setMobileMenuOpen(false);
   };
 
   const handleClientHubClick = () => {
     if (user?.role === 'client') {
+      // නියම Client Management Dashboard එකට navigate වීම
       navigate('/clientdashboard');
     } else {
-      navigate('/signup?role=client');
+      navigate('/login?role=client');
     }
     setMobileMenuOpen(false);
   };
@@ -71,7 +72,9 @@ export default function Header() {
     location.pathname === '/login' ||
     location.pathname === '/signup' ||
     location.pathname.startsWith('/stddashboard') ||
+    location.pathname.startsWith('/student/dashboard') ||
     location.pathname.startsWith('/clientdashboard') ||
+    location.pathname.startsWith('/client/dashboard') ||
     location.pathname.startsWith('/create-gig') ||
     location.pathname.startsWith('/post-job') ||
     location.pathname.startsWith('/browse-jobs') ||
@@ -112,6 +115,14 @@ export default function Header() {
       navigate(`/browse?category=${encodeURIComponent(categoryName)}`);
     }
   };
+
+  const isClientActive =
+    location.pathname.startsWith('/clientdashboard') ||
+    location.pathname.startsWith('/client/dashboard');
+
+  const isStudentActive =
+    location.pathname.startsWith('/stddashboard') ||
+    location.pathname.startsWith('/student/dashboard');
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white border-b border-gray-100 shadow-2xs font-sans select-none">
@@ -227,7 +238,7 @@ export default function Header() {
                 type="button"
                 onClick={handleStudentHubClick}
                 className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                  location.pathname.startsWith('/stddashboard')
+                  isStudentActive
                     ? 'bg-[#007a4d] text-white'
                     : 'text-[#007a4d] bg-[#eaf8f1] hover:bg-emerald-100'
                 }`}
@@ -239,7 +250,7 @@ export default function Header() {
                 type="button"
                 onClick={handleClientHubClick}
                 className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                  location.pathname.startsWith('/clientdashboard')
+                  isClientActive
                     ? 'bg-blue-700 text-white'
                     : 'text-blue-800 bg-blue-50 hover:bg-blue-100'
                 }`}
@@ -287,6 +298,7 @@ export default function Header() {
           )}
         </div>
 
+        {/* Mobile controls */}
         <div className="lg:hidden flex items-center gap-1.5">
           {user && (
             <>
