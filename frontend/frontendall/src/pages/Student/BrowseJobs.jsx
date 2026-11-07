@@ -1,130 +1,104 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import {
   Search,
   Filter,
   DollarSign,
   Clock,
   Send,
-  CheckCircle2,
   X,
   Briefcase,
   ShieldCheck,
-  Calendar,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Lock,
+  Loader2
 } from 'lucide-react';
+import API from '../../api/axios';
 
 export default function BrowseJobs() {
-  // Filters & Search
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // Modal State for Submitting Proposal
+  // Current Logged-in User
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Modal & Bid submission state
   const [selectedJob, setSelectedJob] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Proposal Form State
   const [bidAmount, setBidAmount] = useState('');
-  const [deliveryTime, setDeliveryTime] = useState('2 Days');
+  const [deliveryDays, setDeliveryDays] = useState(3);
   const [coverLetter, setCoverLetter] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  // Dummy Client Job Posts (Live Market Feed)
-  const jobPosts = [
-    {
-      id: 'JOB-102',
-      title: 'Need React & Tailwind Developer for Annual Tech Fest Landing Page',
-      category: 'Coding & Tech',
-      budget: 50.0,
-      deadline: 'Nov 05, 2026',
-      client: {
-        id: 'cl-101',
-        name: 'Kavindu Perera',
-        university: 'University of Moratuwa',
-        role: 'IEEE Student Branch',
-      },
-      proposalsCount: 6,
-      postedDate: '1 day ago',
-      description:
-        'We require an interactive, mobile-responsive landing page for our university tech symposium. Starter Figma designs are ready. Needs clean component code in React & Tailwind CSS.',
-      skills: ['React', 'Tailwind CSS', 'Responsive UI', 'Git'],
-    },
-    {
-      id: 'JOB-105',
-      title: 'Object-Oriented Programming (Java) Lab Assignment Bug Fixing',
-      category: 'Coding & Tech',
-      budget: 30.0,
-      deadline: 'Oct 31, 2026',
-      client: {
-        id: 'cl-102',
-        name: 'Sanduni Fernando',
-        university: 'University of Peradeniya',
-        role: 'Faculty of Engineering',
-      },
-      proposalsCount: 3,
-      postedDate: '4 hours ago',
-      description:
-        'Having runtime exceptions in an OOP Java project using polymorphism and file handling. Need an experienced student peer to debug and explain the corrections via comments.',
-      skills: ['Java', 'OOP', 'Debugging', 'Exception Handling'],
-    },
-    {
-      id: 'JOB-098',
-      title: 'Peer Tutoring for Data Structures & Algorithms (Trees & Graph Traversal)',
-      category: 'Academics & Tutoring',
-      budget: 25.0,
-      deadline: 'Nov 02, 2026',
-      client: {
-        id: 'cl-103',
-        name: 'Tharindu Wickramasinghe',
-        university: 'SLIIT',
-        role: 'Computing Faculty',
-      },
-      proposalsCount: 5,
-      postedDate: '2 days ago',
-      description:
-        'Looking for an ICT/CS senior student to conduct a 1-on-1 virtual revision session covering BFS, DFS, and Binary Search Tree balancing ahead of semester midterms.',
-      skills: ['Data Structures', 'Algorithms', 'Tutoring'],
-    },
-    {
-      id: 'JOB-110',
-      title: 'Event T-Shirt & Digital Badge Vector Illustration',
-      category: 'Graphics & UI/UX',
-      budget: 40.0,
-      deadline: 'Nov 07, 2026',
-      client: {
-        id: 'cl-104',
-        name: 'Ahamed Musfira',
-        university: 'SEUSL',
-        role: 'Student Union',
-      },
-      proposalsCount: 4,
-      postedDate: 'Just now',
-      description:
-        'Need vector badge emblems and modern minimalist t-shirt artwork for our upcoming campus sports meet. Deliverables must include editable AI/SVG vector files.',
-      skills: ['Adobe Illustrator', 'Vector Art', 'Graphic Design'],
-    },
-  ];
+  // Fetch real jobs from Backend API
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get('/jobs');
+      if (res.data?.success) {
+        setJobs(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching jobs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
 
   const categories = [
     'All',
-    'Coding & Tech',
     'Academics & Tutoring',
+    'Coding & Tech',
     'Graphics & UI/UX',
     'Writing & Proofreading',
+    'Video & Media',
+    'Campus Services',
   ];
 
-  const filteredJobs = jobPosts.filter((job) => {
+  const filteredJobs = jobs.filter((job) => {
     const matchesSearch =
-      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchTerm.toLowerCase());
+      job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.client?.university?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.client?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesCategory =
       selectedCategory === 'All' || job.category === selectedCategory;
+
     return matchesSearch && matchesCategory;
   });
 
   const handleOpenBidModal = (job) => {
+    // Client protection
+    const jobClientId = job.client?._id ? job.client._id.toString() : job.client?.toString();
+    const currentUserId = currentUser?._id ? currentUser._id.toString() : currentUser?.id?.toString();
+
+    if (jobClientId === currentUserId) {
+      alert('You cannot bid on your own posted task.');
+      return;
+    }
+
+    if (currentUser?.role === 'client') {
+      alert('Client accounts cannot submit bids. Please use a student account to bid.');
+      return;
+    }
+
     setSelectedJob(job);
-    setBidAmount(job.budget.toString());
+    setBidAmount(job.budget?.toString() || '');
+    setDeliveryDays(3);
     setCoverLetter('');
     setIsModalOpen(true);
   };
@@ -134,74 +108,94 @@ export default function BrowseJobs() {
     setSelectedJob(null);
   };
 
-  const handleSubmitProposal = (e) => {
+  const handleSubmitProposal = async (e) => {
     e.preventDefault();
+    if (!selectedJob) return;
 
-    const proposalData = {
-      jobId: selectedJob.id,
-      bidAmount: parseFloat(bidAmount),
-      deliveryTime,
-      coverLetter,
-      submittedAt: new Date().toISOString(),
-    };
+    if (!bidAmount || Number(bidAmount) <= 0) {
+      alert('Please enter a valid bid amount.');
+      return;
+    }
 
-    console.log('Proposal Submitted:', proposalData);
-    alert(`🎉 Proposal submitted successfully for ${selectedJob.id} at $${bidAmount}! The client will review your bid.`);
-    handleCloseModal();
+    if (!coverLetter.trim()) {
+      alert('Please provide a short cover note or pitch.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const jobId = selectedJob._id;
+      const res = await API.post(`/jobs/${jobId}/proposals`, {
+        bidAmount: Number(bidAmount),
+        deliveryDays: Number(deliveryDays),
+        coverLetter: coverLetter.trim()
+      });
+
+      if (res.data?.success) {
+        alert('🎉 Proposal submitted successfully! The client will review your bid.');
+        handleCloseModal();
+        fetchJobs();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit proposal.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/60 py-8 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gray-50/60 py-8 sm:py-10 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-6xl mx-auto space-y-7">
 
-        {/* ---------------- Header Banner ---------------- */}
-        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Reverse Bidding Marketplace</span>
-              </span>
+        {/* Header Banner */}
+        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs">
+          <div className="space-y-1.5 max-w-3xl">
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#007a4d] bg-[#eaf8f1] px-3 py-1 rounded-full border border-emerald-100">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Reverse Bidding Marketplace</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
               Campus Task Requests & Job Board
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 max-w-2xl">
-              Browse projects posted by university clients and peers. Submit your competitive proposal and get hired directly through secure escrow payments.
+            <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
+              Browse projects posted by university clients and student clubs. Submit your competitive proposal and work securely through verified milestone Escrow payouts.
             </p>
           </div>
-
-          <Link
-            to="/stddashboard"
-            className="self-start md:self-center px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            My Student Dashboard
-          </Link>
         </div>
 
-        {/* ---------------- Search & Filter Bar ---------------- */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex flex-col sm:flex-row items-center gap-4">
-          <div className="relative flex-1 w-full">
+        {/* Search & Filter Bar */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-3.5 sm:p-4 shadow-2xs space-y-3 sm:space-y-4">
+          <div className="relative w-full">
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by keywords (e.g. React, Java, Tutoring, Vector)..."
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800"
+              placeholder="Search by keywords (e.g. React, Java, Tutoring, Vector, University)..."
+              className="w-full pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800 transition-colors"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            <Filter className="w-4 h-4 text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0 ml-1" />
             {categories.map((cat) => (
               <button
                 key={cat}
+                type="button"
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                   selectedCategory === cat
-                    ? 'bg-[#007a4d] text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-[#007a4d] text-white shadow-xs'
+                    : 'bg-gray-100/80 text-gray-600 hover:bg-gray-200/70'
                 }`}
               >
                 {cat}
@@ -210,137 +204,158 @@ export default function BrowseJobs() {
           </div>
         </div>
 
-        {/* ---------------- Jobs List ---------------- */}
+        {/* Job Listings Area */}
         <div className="space-y-4">
-          {filteredJobs.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center space-y-3">
-              <Briefcase className="w-10 h-10 text-gray-300 mx-auto" />
-              <h3 className="text-sm font-bold text-gray-800">No Job Requests Found</h3>
-              <p className="text-xs text-gray-500">
-                Try searching with different keywords or switch categories.
+          {loading ? (
+            <div className="bg-white rounded-3xl border border-gray-100 p-16 text-center shadow-2xs flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-7 h-7 text-[#007a4d] animate-spin" />
+              <p className="text-xs font-semibold text-gray-500">Loading campus task requests...</p>
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center max-w-md mx-auto shadow-2xs space-y-3">
+              <Briefcase className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center mx-auto" />
+              <h3 className="text-sm font-bold text-gray-900">No Job Requests Found</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Try searching with different keywords or switch categories to view other student task requests.
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCategory('All');
+                }}
+                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-[#007a4d] hover:bg-[#00633e] text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Reset Search
+              </button>
             </div>
           ) : (
-            filteredJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-7 shadow-sm hover:border-[#007a4d]/30 transition-all space-y-4"
-              >
-                {/* Card Top: Badges & Budget */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-mono font-bold text-gray-400">{job.id}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
-                      {job.category}
-                    </span>
-                    <span className="text-xs text-gray-400">• Posted {job.postedDate}</span>
-                  </div>
+            filteredJobs.map((job) => {
+              const displayId = `JOB-${job._id?.slice(-4).toUpperCase()}`;
+              const clientName = job.client?.name || 'Verified Client';
+              const clientUniversity = job.client?.university || 'Sri Lankan University';
+              const proposalsCount = job.proposals?.length || 0;
+              const formattedDeadline = job.deadline
+                ? new Date(job.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Flexible';
+              const postedDate = job.createdAt
+                ? new Date(job.createdAt).toLocaleDateString()
+                : 'Recently';
 
-                  <div className="flex items-center gap-2 text-right">
-                    <span className="text-xs text-gray-400">Client Budget:</span>
-                    <span className="text-xl font-extrabold text-[#007a4d]">${job.budget.toFixed(2)}</span>
-                  </div>
-                </div>
+              const jobClientId = job.client?._id ? job.client._id.toString() : job.client?.toString();
+              const currentUserId = currentUser?._id ? currentUser._id.toString() : currentUser?.id?.toString();
+              const isOwnTask = jobClientId === currentUserId;
+              const isClient = currentUser?.role === 'client';
 
-                {/* Job Title & Scope */}
-                <div className="space-y-2">
-                  <h3 className="text-base sm:text-lg font-extrabold text-gray-900 tracking-tight">
-                    {job.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                    {job.description}
-                  </p>
-                </div>
-
-                {/* Tags / Skills Required */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {job.skills.map((skill, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[11px] font-semibold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Footer: Client Info & Submit Bid Button */}
-                <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  {/* Clickable Client Card linking to /client/:id */}
-                  <Link
-                    to={`/client/${job.client.id}`}
-                    className="flex items-center gap-3 hover:opacity-85 transition-opacity group"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-gray-100 text-[#007a4d] flex items-center justify-center font-bold text-xs uppercase group-hover:bg-emerald-50 transition-colors">
-                      {job.client.name.substring(0, 2)}
+              return (
+                <div
+                  key={job._id}
+                  className="bg-white rounded-3xl border border-gray-100 p-5 sm:p-7 shadow-2xs hover:border-emerald-200 hover:shadow-md transition-all space-y-4"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono font-bold text-gray-400">{displayId}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#007a4d] bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
+                        {job.category}
+                      </span>
+                      <span className="text-xs text-gray-400">Posted {postedDate}</span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-gray-900 group-hover:text-[#007a4d] transition-colors">
-                          {job.client.name}
-                        </span>
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <span className="text-xs text-gray-400 font-medium">Client Budget:</span>
+                      <span className="text-lg sm:text-xl font-black text-[#007a4d]">
+                        ${Number(job.budget || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-snug">
+                      {job.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      {job.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#007a4d] border border-emerald-100 flex items-center justify-center font-bold text-xs uppercase">
+                        {clientName.substring(0, 2)}
                       </div>
-                      <p className="text-[11px] text-gray-500">
-                        {job.client.role} • {job.client.university}
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-gray-900">
+                            {clientName}
+                          </span>
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#007a4d]" />
+                        </div>
+                        <p className="text-[11px] text-gray-400">
+                          {clientUniversity}
+                        </p>
+                      </div>
                     </div>
-                  </Link>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                    <div className="text-right text-xs">
-                      <span className="font-bold text-gray-800">{job.proposalsCount} Proposals</span>
-                      <p className="text-[11px] text-gray-400">Deadline: {job.deadline}</p>
+                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                      <div className="text-left sm:text-right text-xs">
+                        <span className="font-bold text-gray-800">{proposalsCount} Proposals</span>
+                        <p className="text-[11px] text-gray-400">Deadline: {formattedDeadline}</p>
+                      </div>
+
+                      {/* Client Protection / Own Task Restriction */}
+                      {isOwnTask || isClient ? (
+                        <span className="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl text-xs font-bold border border-gray-200">
+                          {isOwnTask ? 'Your Posted Task' : 'Client View Only'}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenBidModal(job)}
+                          className="px-4 sm:px-5 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                        >
+                          <span>Submit Proposal</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenBidModal(job)}
-                      className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
-                    >
-                      <span>Submit Proposal</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
       </div>
 
-      {/* ---------------- 2. Submit Proposal / Bid Modal ---------------- */}
+      {/* Proposal Submission Modal */}
       {isModalOpen && selectedJob && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-xl border border-gray-100 space-y-6 relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-6 relative animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
 
-            {/* Modal Header */}
             <div className="flex items-start justify-between pb-4 border-b border-gray-100">
               <div>
-                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-[#007a4d] uppercase tracking-wider bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
                   Proposal Submission
                 </span>
-                <h2 className="text-lg font-extrabold text-gray-900 mt-1">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 mt-1 leading-snug">
                   Bid for: {selectedJob.title}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Client: {selectedJob.client.name} • Client Budget: ${selectedJob.budget}
+                  Client: <span className="font-semibold text-gray-700">{selectedJob.client?.name || 'Client'}</span> • Client Budget:{' '}
+                  <span className="font-bold text-[#007a4d]">${selectedJob.budget}</span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Proposal Form */}
             <form onSubmit={handleSubmitProposal} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Bid Amount */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Your Bid Price ($ USD) *
@@ -357,32 +372,30 @@ export default function BrowseJobs() {
                       className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-[#007a4d] focus:outline-none focus:border-[#007a4d] focus:bg-white"
                     />
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1">Amount you will receive upon task completion.</p>
+                  <p className="text-[10px] text-gray-400 mt-1">Amount you will receive upon task approval.</p>
                 </div>
 
-                {/* Delivery Time */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Turnaround Time *
+                    Turnaround Time (Days) *
                   </label>
                   <div className="relative">
                     <Clock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <select
-                      value={deliveryTime}
-                      onChange={(e) => setDeliveryTime(e.target.value)}
+                      value={deliveryDays}
+                      onChange={(e) => setDeliveryDays(Number(e.target.value))}
                       className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:border-[#007a4d] focus:bg-white cursor-pointer"
                     >
-                      <option>1 Day (Express)</option>
-                      <option>2 Days</option>
-                      <option>3 Days</option>
-                      <option>5 Days</option>
-                      <option>7 Days</option>
+                      <option value={1}>1 Day (Express)</option>
+                      <option value={2}>2 Days</option>
+                      <option value={3}>3 Days</option>
+                      <option value={5}>5 Days</option>
+                      <option value={7}>7 Days</option>
                     </select>
                   </div>
                 </div>
               </div>
 
-              {/* Cover Letter */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                   Cover Letter / Proposal Note *
@@ -392,26 +405,43 @@ export default function BrowseJobs() {
                   rows={4}
                   value={coverLetter}
                   onChange={(e) => setCoverLetter(e.target.value)}
-                  placeholder="Explain why your experience fits this task, the tech stack you will use, and your past coursework/portfolio samples..."
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800"
+                  placeholder="Explain why your skills fit this task, your planned implementation approach, and relevant coursework experience..."
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800 leading-relaxed"
                 />
               </div>
 
-              {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-3 pt-3">
+              <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-100 flex items-start gap-2.5">
+                <Lock className="w-4 h-4 text-[#007a4d] shrink-0 mt-0.5" />
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  Funds will be deposited into the UniGig Milestone Escrow vault before you begin. Once your submission is accepted, payment is immediately released to your wallet.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={handleCloseModal}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs"
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl font-bold text-xs shadow-sm flex items-center gap-2 active:scale-95 transition-all"
+                  disabled={submitting}
+                  className="px-6 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl font-bold text-xs shadow-xs flex items-center gap-2 active:scale-95 transition-all cursor-pointer disabled:bg-gray-400"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send Proposal</span>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send Proposal</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
