@@ -1,19 +1,58 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ShieldCheck, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import API from '../api/axios';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  
+  // Loading සහ Error states
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Backend API සම්බන්ධ කළ පසු මෙතනින් authentication සිදු කෙරේ
-    console.log({ email, password, rememberMe });
-    navigate('/stddashboard'); // දැනට login වූ පසු Browse page එකට redirect වේ
+    setErrorMessage('');
+    setLoading(true);
+
+    try {
+      // Backend Auth API Call
+      const response = await API.post('/auth/login', {
+        email,
+        password
+      });
+
+      const { token, user } = response.data;
+
+      // Token සහ User data LocalStorage එකේ තැන්පත් කිරීම
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+
+      // User Role එක අනුව Dashboard එකට Redirect කිරීම
+      if (user?.role === 'client') {
+        navigate('/client/dashboard'); // Client Dashboard route එක
+      } else {
+        navigate('/stddashboard'); // Student Dashboard route එක
+      }
+
+    } catch (error) {
+      console.error('Login error:', error);
+      // Backend එකෙන් එවන error message එක පෙන්වීම
+      setErrorMessage(
+        error.response?.data?.message || 'Invalid email or password. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,6 +71,14 @@ export default function Login() {
             Log in with your verified university credentials
           </p>
         </div>
+
+        {/* Error Alert Box */}
+        {errorMessage && (
+          <div className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2.5 text-xs text-red-600 font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -100,10 +147,20 @@ export default function Login() {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-[#007a4d] hover:bg-[#006640] text-white py-3 px-4 rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
+            disabled={loading}
+            className="w-full bg-[#007a4d] hover:bg-[#006640] disabled:bg-gray-400 text-white py-3 px-4 rounded-xl font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2 cursor-pointer disabled:cursor-not-allowed"
           >
-            <span>Log In to UniGig</span>
-            <ArrowRight className="w-4 h-4" />
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Verifying...</span>
+              </>
+            ) : (
+              <>
+                <span>Log In to UniGig</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </button>
         </form>
 

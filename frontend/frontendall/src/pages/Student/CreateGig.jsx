@@ -8,9 +8,12 @@ import {
   Image as ImageIcon,
   CheckCircle2,
   Lock,
-  Layers,
-  Tag
+  Tag,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
+// File එක පිහිටි තැන අනුව path එක (../api/axios හෝ ../../api/axios) භාවිතා කරන්න:
+import API from '../../api/axios';
 
 export default function CreateGig() {
   const navigate = useNavigate();
@@ -28,6 +31,10 @@ export default function CreateGig() {
     premium: { name: 'Comprehensive VIP', price: 50, delivery: '3 Days', desc: 'End-to-end guidance + live 1-on-1 call' },
   });
 
+  // Loading සහ Error States
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
   const categories = [
     'Academics & Tutoring',
     'Coding & Tech',
@@ -42,14 +49,46 @@ export default function CreateGig() {
       ...prev,
       [tier]: {
         ...prev[tier],
-        [field]: value,
+        [field]: field === 'price' ? Number(value) : value,
       },
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/stddashboard');
+    setErrorMsg('');
+    setLoading(true);
+
+    try {
+      // Backend Controller එකට ගැලපෙන Payload එක
+      const payload = {
+        title,
+        category,
+        turnaround,
+        description,
+        imageUrl: imageUrl.trim() || undefined,
+        tags: tags ? tags.split(',').map((t) => t.trim()) : [],
+        packages: {
+          basic: { ...packages.basic, price: Number(packages.basic.price) },
+          standard: { ...packages.standard, price: Number(packages.standard.price) },
+          premium: { ...packages.premium, price: Number(packages.premium.price) },
+        },
+      };
+
+      const response = await API.post('/gigs', payload);
+
+      if (response.data?.success) {
+        alert('🎉 Campus Gig published successfully!');
+        navigate('/stddashboard');
+      }
+    } catch (err) {
+      console.error('Error creating gig:', err);
+      setErrorMsg(
+        err.response?.data?.message || 'Failed to publish gig. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -79,8 +118,17 @@ export default function CreateGig() {
           </p>
         </div>
 
+        {/* Error Alert Box */}
+        {errorMsg && (
+          <div className="p-4 rounded-2xl bg-red-50 border border-red-200 flex items-center gap-2.5 text-xs text-red-600 font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
 
+          {/* 1. Gig Overview */}
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-2xs space-y-5">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-[#eaf8f1] text-[#007a4d] flex items-center justify-center text-xs font-black">1</span>
@@ -133,17 +181,18 @@ export default function CreateGig() {
                     onChange={(e) => setTurnaround(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white transition-all text-gray-800 cursor-pointer font-medium"
                   >
-                    <option>1 Day (Urgent)</option>
-                    <option>2 Days</option>
-                    <option>3 Days</option>
-                    <option>5 Days</option>
-                    <option>7 Days</option>
+                    <option value="1 Day">1 Day (Urgent)</option>
+                    <option value="2 Days">2 Days</option>
+                    <option value="3 Days">3 Days</option>
+                    <option value="5 Days">5 Days</option>
+                    <option value="7 Days">7 Days</option>
                   </select>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* 2. Pricing Packages */}
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-2xs space-y-5">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-[#eaf8f1] text-[#007a4d] flex items-center justify-center text-xs font-black">2</span>
@@ -154,6 +203,7 @@ export default function CreateGig() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Basic */}
               <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Tier 1: Basic</span>
                 <div>
@@ -163,6 +213,7 @@ export default function CreateGig() {
                     <input
                       type="number"
                       min="5"
+                      required
                       value={packages.basic.price}
                       onChange={(e) => handlePackageChange('basic', 'price', e.target.value)}
                       className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-[#007a4d] focus:outline-none focus:border-[#007a4d]"
@@ -173,6 +224,7 @@ export default function CreateGig() {
                   <label className="text-[11px] font-bold text-gray-600 block mb-1">Package Name</label>
                   <input
                     type="text"
+                    required
                     value={packages.basic.name}
                     onChange={(e) => handlePackageChange('basic', 'name', e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#007a4d]"
@@ -182,6 +234,7 @@ export default function CreateGig() {
                   <label className="text-[11px] font-bold text-gray-600 block mb-1">Included Scope</label>
                   <input
                     type="text"
+                    required
                     value={packages.basic.desc}
                     onChange={(e) => handlePackageChange('basic', 'desc', e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#007a4d]"
@@ -189,6 +242,7 @@ export default function CreateGig() {
                 </div>
               </div>
 
+              {/* Standard */}
               <div className="p-4 rounded-2xl border-2 border-emerald-200 bg-[#eaf8f1]/30 space-y-3 relative shadow-2xs">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#007a4d]">Tier 2: Standard (Popular)</span>
                 <div>
@@ -198,6 +252,7 @@ export default function CreateGig() {
                     <input
                       type="number"
                       min="10"
+                      required
                       value={packages.standard.price}
                       onChange={(e) => handlePackageChange('standard', 'price', e.target.value)}
                       className="w-full pl-8 pr-3 py-2 bg-white border border-emerald-200 rounded-lg text-sm font-bold text-[#007a4d] focus:outline-none focus:border-[#007a4d]"
@@ -208,6 +263,7 @@ export default function CreateGig() {
                   <label className="text-[11px] font-bold text-gray-600 block mb-1">Package Name</label>
                   <input
                     type="text"
+                    required
                     value={packages.standard.name}
                     onChange={(e) => handlePackageChange('standard', 'name', e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#007a4d]"
@@ -217,6 +273,7 @@ export default function CreateGig() {
                   <label className="text-[11px] font-bold text-gray-600 block mb-1">Included Scope</label>
                   <input
                     type="text"
+                    required
                     value={packages.standard.desc}
                     onChange={(e) => handlePackageChange('standard', 'desc', e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#007a4d]"
@@ -224,6 +281,7 @@ export default function CreateGig() {
                 </div>
               </div>
 
+              {/* Premium */}
               <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/50 space-y-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Tier 3: Premium</span>
                 <div>
@@ -233,6 +291,7 @@ export default function CreateGig() {
                     <input
                       type="number"
                       min="15"
+                      required
                       value={packages.premium.price}
                       onChange={(e) => handlePackageChange('premium', 'price', e.target.value)}
                       className="w-full pl-8 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-bold text-[#007a4d] focus:outline-none focus:border-[#007a4d]"
@@ -243,6 +302,7 @@ export default function CreateGig() {
                   <label className="text-[11px] font-bold text-gray-600 block mb-1">Package Name</label>
                   <input
                     type="text"
+                    required
                     value={packages.premium.name}
                     onChange={(e) => handlePackageChange('premium', 'name', e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#007a4d]"
@@ -252,6 +312,7 @@ export default function CreateGig() {
                   <label className="text-[11px] font-bold text-gray-600 block mb-1">Included Scope</label>
                   <input
                     type="text"
+                    required
                     value={packages.premium.desc}
                     onChange={(e) => handlePackageChange('premium', 'desc', e.target.value)}
                     className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-800 focus:outline-none focus:border-[#007a4d]"
@@ -261,6 +322,7 @@ export default function CreateGig() {
             </div>
           </div>
 
+          {/* 3. Description & Tags */}
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-2xs space-y-5">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-[#eaf8f1] text-[#007a4d] flex items-center justify-center text-xs font-black">3</span>
@@ -298,6 +360,7 @@ export default function CreateGig() {
             </div>
           </div>
 
+          {/* 4. Cover Image */}
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-2xs space-y-4">
             <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
               <span className="w-6 h-6 rounded-lg bg-[#eaf8f1] text-[#007a4d] flex items-center justify-center text-xs font-black">4</span>
@@ -337,20 +400,32 @@ export default function CreateGig() {
             </div>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
+              disabled={loading}
               onClick={() => navigate('/stddashboard')}
-              className="px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs transition-colors"
+              className="px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-7 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl font-bold text-xs shadow-2xs transition-all active:scale-95 flex items-center gap-2"
+              disabled={loading}
+              className="px-7 py-2.5 bg-[#007a4d] hover:bg-[#00633e] disabled:bg-gray-400 text-white rounded-xl font-bold text-xs shadow-2xs transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Publish Campus Gig</span>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Publishing Gig...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Publish Campus Gig</span>
+                </>
+              )}
             </button>
           </div>
 

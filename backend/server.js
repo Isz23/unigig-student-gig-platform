@@ -6,7 +6,7 @@ import connectDB from './config/db.js';
 // Routes Import
 import gigRoutes from './routes/gigRoutes.js';
 import authRoutes from './routes/authRoutes.js';
-import orderRoutes from './routes/orderRoutes.js'; // 1. Import orderRoutes
+import orderRoutes from './routes/orderRoutes.js';
 
 dotenv.config();
 
@@ -14,8 +14,21 @@ connectDB();
 
 const app = express();
 
+// Allowed Origins (5173, 5174 සහ .env හි ඇති URL)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS'));
+    }
+  },
   credentials: true
 }));
 
@@ -28,7 +41,7 @@ app.get('/', (req, res) => {
 // Routes Mount
 app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
-app.use('/api/orders', orderRoutes); // 2. Mount orderRoutes
+app.use('/api/orders', orderRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
