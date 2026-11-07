@@ -16,12 +16,10 @@ export default function NotificationDropdown() {
   const dropdownRef = useRef(null);
   const location = useLocation();
 
-  // URL Path එක අනුව පරිශීලකයා Client ද Student ද යන්න හඳුනාගැනීම
   const isClientRole =
     location.pathname.startsWith('/clientdashboard') ||
     location.pathname.startsWith('/post-job');
 
-  // 1. Student Freelancer Notifications List
   const studentNotifications = [
     {
       id: 'NOTIF-S1',
@@ -48,7 +46,7 @@ export default function NotificationDropdown() {
       message: 'Kavindu Perera: "I reviewed the initial PR. Could you update the mobile navbar?"',
       createdDate: '4 hours ago',
       readStatus: true,
-      targetLink: '/messages'
+      targetLink: '/messages?peerId=client-001'
     },
     {
       id: 'NOTIF-S4',
@@ -61,7 +59,6 @@ export default function NotificationDropdown() {
     }
   ];
 
-  // 2. Client Buyer Notifications List
   const clientNotifications = [
     {
       id: 'NOTIF-C1',
@@ -88,7 +85,7 @@ export default function NotificationDropdown() {
       message: 'Dulaksha: "I pushed the deliverable link to the Student Dashboard for your review!"',
       createdDate: '3 hours ago',
       readStatus: true,
-      targetLink: '/messages'
+      targetLink: '/messages?peerId=std-001'
     }
   ];
 
@@ -96,12 +93,10 @@ export default function NotificationDropdown() {
     isClientRole ? clientNotifications : studentNotifications
   );
 
-  // Path එක මාරු වන විට (Student Hub <-> Client Hub) අදාළ notifications load කිරීම
   useEffect(() => {
     setNotifications(isClientRole ? clientNotifications : studentNotifications);
   }, [location.pathname]);
 
-  // Click outside listener to close dropdown
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -127,7 +122,7 @@ export default function NotificationDropdown() {
   const getIcon = (type) => {
     switch (type) {
       case 'bid_accepted':
-        return <Briefcase className="w-4 h-4 text-emerald-600" />;
+        return <Briefcase className="w-4 h-4 text-[#007a4d]" />;
       case 'new_bid':
         return <Briefcase className="w-4 h-4 text-blue-600" />;
       case 'deliverable_submitted':
@@ -135,7 +130,7 @@ export default function NotificationDropdown() {
       case 'payment_released':
         return <DollarSign className="w-4 h-4 text-[#007a4d]" />;
       case 'new_message':
-        return <MessageSquare className="w-4 h-4 text-indigo-500" />;
+        return <MessageSquare className="w-4 h-4 text-emerald-600" />;
       case 'rating':
         return <Sparkles className="w-4 h-4 text-amber-500" />;
       default:
@@ -145,13 +140,12 @@ export default function NotificationDropdown() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`relative p-2 rounded-xl transition-colors ${
           isOpen
-            ? 'text-[#007a4d] bg-emerald-50'
+            ? 'text-[#007a4d] bg-[#eaf8f1]'
             : 'text-gray-600 hover:text-[#007a4d] hover:bg-gray-50'
         }`}
         title="Notifications"
@@ -159,23 +153,21 @@ export default function NotificationDropdown() {
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-emerald-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-white">
+          <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#007a4d] text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 ring-2 ring-white">
             {unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl border border-gray-100 shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 font-sans">
-          {/* Header */}
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl border border-gray-100 shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 font-sans">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-extrabold text-gray-900">
+              <h3 className="text-xs sm:text-sm font-bold text-gray-900">
                 {isClientRole ? 'Client Notifications' : 'Student Notifications'}
               </h3>
               {unreadCount > 0 && (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                <span className="text-[10px] font-bold text-[#007a4d] bg-[#eaf8f1] px-2 py-0.5 rounded-full border border-emerald-100">
                   {unreadCount} new
                 </span>
               )}
@@ -185,7 +177,7 @@ export default function NotificationDropdown() {
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="text-[11px] font-bold text-[#007a4d] hover:text-[#006640] flex items-center gap-1 transition-colors"
+                className="text-[11px] font-bold text-[#007a4d] hover:text-[#00633e] flex items-center gap-1 transition-colors"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 <span>Mark all read</span>
@@ -193,8 +185,7 @@ export default function NotificationDropdown() {
             )}
           </div>
 
-          {/* Notifications List */}
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-50 p-1">
+          <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-50 p-1.5 space-y-1">
             {notifications.length > 0 ? (
               notifications.map((item) => (
                 <Link
@@ -204,13 +195,13 @@ export default function NotificationDropdown() {
                     handleMarkAsRead(item.id);
                     setIsOpen(false);
                   }}
-                  className={`p-3.5 rounded-2xl transition-all flex items-start gap-3 text-left block ${
+                  className={`p-3 sm:p-3.5 rounded-2xl transition-all flex items-start gap-3 text-left block ${
                     !item.readStatus
-                      ? 'bg-emerald-50/40 hover:bg-emerald-50/70'
-                      : 'hover:bg-gray-50/80'
+                      ? 'bg-[#eaf8f1]/50 hover:bg-[#eaf8f1]/80'
+                      : 'hover:bg-gray-50'
                   }`}
                 >
-                  <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 shadow-xs flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
                     {getIcon(item.type)}
                   </div>
 
@@ -220,14 +211,14 @@ export default function NotificationDropdown() {
                         {item.title}
                       </h4>
                       {!item.readStatus && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-[#007a4d] shrink-0" />
                       )}
                     </div>
                     <p className="text-[11px] text-gray-600 line-clamp-2 leading-relaxed">
                       {item.message}
                     </p>
                     <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1.5 font-medium">
-                      <Clock className="w-3 h-3" />
+                      <Clock className="w-3 h-3 text-gray-400" />
                       <span>{item.createdDate}</span>
                     </div>
                   </div>
@@ -240,9 +231,8 @@ export default function NotificationDropdown() {
             )}
           </div>
 
-          {/* Footer */}
-          <div className="p-3 bg-gray-50 border-t border-gray-100 text-center">
-            <span className="text-[11px] text-gray-500 font-medium">
+          <div className="p-2.5 bg-gray-50 border-t border-gray-100 text-center">
+            <span className="text-[11px] text-gray-400 font-medium">
               UniGig Escrow & Activity Alerts
             </span>
           </div>
