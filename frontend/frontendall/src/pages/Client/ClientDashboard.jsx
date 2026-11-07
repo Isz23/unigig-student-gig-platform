@@ -16,7 +16,9 @@ import {
   Sparkles,
   ArrowUpRight,
   AlertCircle,
-  FileText
+  FileText,
+  MessageSquare,
+  UserCheck
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -218,7 +220,7 @@ export default function ClientDashboard() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                {user?.university?.toUpperCase() || 'UNIVERSITY'} • <span className="font-semibold text-gray-700 capitalize">{user?.role || 'Client'} Account</span> • Member 047
+                {user?.university?.toUpperCase() || 'UNIVERSITY'} • <span className="font-semibold text-gray-700 capitalize">{user?.role || 'Client'} Account</span>
               </p>
             </div>
           </div>
@@ -337,13 +339,16 @@ export default function ClientDashboard() {
             ) : (
               activeDeliverables.map((ord) => {
                 const isDelivered = ord.status === 'delivered';
+                const studentId = ord.seller?._id || ord.seller?.id || (typeof ord.seller === 'string' ? ord.seller : '');
+                const studentName = ord.seller?.name || 'Verified Student';
+
                 return (
                   <div
                     key={ord._id}
                     className="bg-white rounded-3xl border border-gray-100 p-6 shadow-2xs space-y-5"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-mono font-bold text-gray-400">ORD-{ord._id?.slice(-4).toUpperCase()}</span>
                           <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
@@ -357,9 +362,41 @@ export default function ClientDashboard() {
                         <h3 className="text-base font-bold text-gray-900">
                           {ord.gig?.title || ord.requirements?.split('\n')[0] || 'Task Order'}
                         </h3>
-                        <p className="text-xs text-gray-500">
-                          Assigned Student: <strong className="text-gray-800">{ord.seller?.name || 'Verified Student'}</strong> • Amount: <strong className="text-[#007a4d]">${ord.price}</strong>
-                        </p>
+
+                        {/* Assigned Student Details, Profile Link & Message Action */}
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 pt-0.5">
+                          <span>Assigned Student:</span>
+                          
+                          {studentId ? (
+                            <Link
+                              to={`/student/profile/${studentId}`}
+                              className="font-bold text-gray-900 hover:text-[#007a4d] hover:underline inline-flex items-center gap-1 transition-colors"
+                              title="View Student Profile"
+                            >
+                              <span>{studentName}</span>
+                              <ExternalLink className="w-3 h-3 text-gray-400" />
+                            </Link>
+                          ) : (
+                            <strong className="text-gray-900">{studentName}</strong>
+                          )}
+
+                          {/* Instant Direct Message Button */}
+                          {studentId && (
+                            <Link
+                              to={`/messages?peerId=${studentId}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#eaf8f1] hover:bg-emerald-100 text-[#007a4d] border border-emerald-200 text-xs font-bold transition-all shadow-2xs cursor-pointer ml-1"
+                              title={`Chat with ${studentName}`}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>Message</span>
+                            </Link>
+                          )}
+
+                          <span className="text-gray-300">•</span>
+                          <span>
+                            Amount: <strong className="text-[#007a4d] font-bold">${ord.price}</strong>
+                          </span>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-2 self-start sm:self-center">
@@ -494,7 +531,7 @@ export default function ClientDashboard() {
                   <div key={ord._id} className="py-3 flex items-center justify-between text-xs">
                     <div>
                       <p className="font-bold text-gray-900">{ord.gig?.title || 'Custom Task'}</p>
-                      <p className="text-gray-400">Student: {ord.seller?.name} • Paid: ${ord.price}</p>
+                      <p className="text-gray-400">Student: {ord.seller?.name || 'Verified Student'} • Paid: ${ord.price}</p>
                     </div>
                     <span className="text-[#007a4d] font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-4 h-4" /> Completed & Escrow Paid
@@ -675,7 +712,9 @@ export default function ClientDashboard() {
                         />
                         <div>
                           <h4 className="text-xs font-bold text-gray-900">{prop.student?.name}</h4>
-                          <p className="text-[11px] text-gray-400">{prop.student?.university} • {prop.student?.studentRegNumber}</p>
+                          <p className="text-[11px] text-gray-400">
+                            {prop.student?.university || 'University'} • {prop.student?.studentRegNumber || ''}
+                          </p>
                         </div>
                       </div>
 

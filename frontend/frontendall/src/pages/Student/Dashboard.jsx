@@ -18,7 +18,8 @@ import {
   Link2,
   CheckCircle2,
   Loader2,
-  Trash2
+  Trash2,
+  MessageSquare
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -361,13 +362,14 @@ export default function Dashboard() {
                   orders.slice(0, 3).map((ord) => {
                     const displayId = `ORD-${ord._id?.slice(-4).toUpperCase()}`;
                     const gigTitle = ord.gig?.title || 'Campus Gig Service';
+                    const buyerId = ord.buyer?._id || ord.buyer?.id || (typeof ord.buyer === 'string' ? ord.buyer : '');
                     const buyerName = ord.buyer?.name || 'Verified Client';
                     const deadlineFormatted = ord.deliveryDeadline
                       ? new Date(ord.deliveryDeadline).toLocaleDateString()
                       : 'Standard';
 
                     return (
-                      <div key={ord._id} className="p-4 rounded-2xl bg-gray-50/70 border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div key={ord._id} className="p-4 rounded-2xl bg-gray-50/70 border border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-emerald-200 transition-all">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-mono font-bold text-gray-400">{displayId}</span>
@@ -385,13 +387,31 @@ export default function Dashboard() {
                             <span className="text-[11px] text-gray-500 font-medium">({ord.packageTier || 'Basic'})</span>
                           </div>
                           <h4 className="text-sm font-bold text-gray-900 line-clamp-1">{gigTitle}</h4>
-                          <p className="text-xs text-gray-500">
-                            Client: <strong className="text-gray-700">{buyerName}</strong> • Due: {deadlineFormatted}
+                          <p className="text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
+                            <span>Client:</span>
+                            <Link
+                              to={`/client/${buyerId}`}
+                              className="font-bold text-gray-800 hover:text-[#007a4d] hover:underline transition-colors cursor-pointer"
+                            >
+                              {buyerName}
+                            </Link>
+                            <span className="text-gray-300">•</span>
+                            <span>Due: {deadlineFormatted}</span>
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-3 self-end sm:self-center">
-                          <span className="text-sm font-black text-[#007a4d]">${ord.price?.toFixed(2)}</span>
+                        <div className="flex items-center gap-2.5 self-end sm:self-center">
+                          <span className="text-sm font-black text-[#007a4d] mr-1">${ord.price?.toFixed(2)}</span>
+
+                          {/* Message / Chat Button */}
+                          <Link
+                            to={`/messages?peerId=${buyerId}`}
+                            title="Chat with Client"
+                            className="p-2 bg-white hover:bg-emerald-50 text-[#007a4d] border border-gray-200 hover:border-emerald-300 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span className="text-xs font-bold hidden sm:inline">Chat</span>
+                          </Link>
 
                           {ord.status === 'in_progress' && (
                             <button
@@ -560,13 +580,21 @@ export default function Dashboard() {
                     {orders.map((ord) => {
                       const displayId = `ORD-${ord._id?.slice(-4).toUpperCase()}`;
                       const gigTitle = ord.gig?.title || 'Campus Gig Service';
+                      const buyerId = ord.buyer?._id || ord.buyer?.id || (typeof ord.buyer === 'string' ? ord.buyer : '');
                       const buyerName = ord.buyer?.name || 'Client';
 
                       return (
                         <tr key={ord._id} className="hover:bg-gray-50/50">
                           <td className="py-4 font-mono font-bold text-gray-900">{displayId}</td>
                           <td className="py-4 font-semibold text-gray-900">{gigTitle}</td>
-                          <td className="py-4 text-gray-500">{buyerName}</td>
+                          <td className="py-4">
+                            <Link
+                              to={`/client/${buyerId}`}
+                              className="font-bold text-gray-800 hover:text-[#007a4d] hover:underline transition-colors cursor-pointer"
+                            >
+                              {buyerName}
+                            </Link>
+                          </td>
                           <td className="py-4 font-bold text-[#007a4d]">${ord.price?.toFixed(2)}</td>
                           <td className="py-4">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
@@ -582,21 +610,32 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td className="py-4 text-right">
-                            {ord.status === 'in_progress' ? (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDeliveryModal(ord)}
-                                className="px-3 py-1 bg-[#007a4d] hover:bg-[#006640] text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Chat Link in Table */}
+                              <Link
+                                to={`/messages?peerId=${buyerId}`}
+                                title="Chat with Client"
+                                className="p-1.5 bg-gray-50 hover:bg-emerald-50 text-gray-600 hover:text-[#007a4d] border border-gray-200 hover:border-emerald-200 rounded-lg transition-colors cursor-pointer"
                               >
-                                Deliver Work
-                              </button>
-                            ) : ord.status === 'delivered' ? (
-                              <span className="text-[11px] text-blue-600 font-semibold">Under Client Review</span>
-                            ) : ord.status === 'completed' ? (
-                              <span className="text-[11px] text-emerald-600 font-semibold">Payment Received</span>
-                            ) : (
-                              <span className="text-[11px] text-gray-400">Closed</span>
-                            )}
+                                <MessageSquare className="w-3.5 h-3.5" />
+                              </Link>
+
+                              {ord.status === 'in_progress' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDeliveryModal(ord)}
+                                  className="px-3 py-1 bg-[#007a4d] hover:bg-[#006640] text-white rounded-lg text-xs font-bold shadow-2xs transition-all cursor-pointer"
+                                >
+                                  Deliver Work
+                                </button>
+                              ) : ord.status === 'delivered' ? (
+                                <span className="text-[11px] text-blue-600 font-semibold">Under Client Review</span>
+                              ) : ord.status === 'completed' ? (
+                                <span className="text-[11px] text-emerald-600 font-semibold">Payment Received</span>
+                              ) : (
+                                <span className="text-[11px] text-gray-400">Closed</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );

@@ -23,8 +23,8 @@ import PostJob from './pages/Client/PostJob';
 import BrowseJobs from './pages/Student/BrowseJobs';
 import ClientProfile from './pages/Client/ClientProfile';
 
-//Admin Pages
-import AdminDashboard from './pages/Admin/AdminDashboard';
+// Admin Pages
+// import AdminDashboard from './pages/Admin/AdminDashboard';
 
 function App() {
   return (
@@ -39,7 +39,10 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/gig/:id" element={<GigDetails />} />
+
+            {/* Student Profile Routes */}
             <Route path="/student/:id" element={<StudentProfile />} />
+            <Route path="/student/profile/:id" element={<StudentProfile />} />
 
             {/* Student Routes */}
             <Route path="/stddashboard" element={<Dashboard />} />
@@ -53,8 +56,7 @@ function App() {
             <Route path="/client/:id" element={<ClientProfile />} />
 
             {/* Admin Routes */}
-
-            <Route path = "/AdminDashboard" element = {<AdminDashboard />} />
+            {/* <Route path="/AdminDashboard" element={<AdminDashboard />} /> */}
           </Routes>
         </main>
 
