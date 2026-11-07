@@ -21,15 +21,13 @@ import {
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, gigs, orders, reviews
+  const [activeTab, setActiveTab] = useState('overview');
 
-  // Delivery Modal States
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState(null);
   const [deliveryWorkUrl, setDeliveryWorkUrl] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
 
-  // Student Profile Data
   const student = {
     name: 'Dulaksha Nipun',
     university: 'South Eastern University of Sri Lanka',
@@ -42,7 +40,6 @@ export default function Dashboard() {
     pendingClearance: 40.0,
   };
 
-  // Active Gigs
   const myGigs = [
     {
       id: 1,
@@ -73,7 +70,6 @@ export default function Dashboard() {
     },
   ];
 
-  // Dynamic Orders State (Deliverable submit කළ විට status වෙනස් වේ)
   const [orders, setOrders] = useState([
     {
       id: 'ORD-9477',
@@ -107,7 +103,6 @@ export default function Dashboard() {
     },
   ]);
 
-  // Reviews Data
   const reviews = [
     {
       id: 1,
@@ -141,7 +136,6 @@ export default function Dashboard() {
     }
   ];
 
-  // Open & Close Modal
   const handleOpenDeliveryModal = (order) => {
     setSelectedOrderForDelivery(order);
     setDeliveryWorkUrl('');
@@ -154,11 +148,9 @@ export default function Dashboard() {
     setSelectedOrderForDelivery(null);
   };
 
-  // Submit Deliverable Logic
   const handleSubmitDelivery = (e) => {
     e.preventDefault();
 
-    // Order status එක 'Delivered' ලෙස යාවත්කාලීන කිරීම
     setOrders((prevOrders) =>
       prevOrders.map((ord) =>
         ord.id === selectedOrderForDelivery.id
@@ -172,44 +164,41 @@ export default function Dashboard() {
       )
     );
 
-    alert(`🎉 Deliverable for ${selectedOrderForDelivery.id} submitted successfully! The client has been notified to review and release funds.`);
     handleCloseDeliveryModal();
   };
 
   return (
     <div className="min-h-screen bg-gray-50/60 py-8 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-7">
         
-        {/* ---------------- 1. Top Profile Header Banner ---------------- */}
-        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-center gap-4 sm:gap-5">
             <img
               src={student.avatar}
               alt={student.name}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-[#007a4d]/10"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover ring-4 ring-[#007a4d]/10 shrink-0"
             />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
                   {student.name}
                 </h1>
-                <span className="inline-flex items-center gap-1 bg-[#eaf8f1] text-[#00875a] text-xs font-bold px-2.5 py-0.5 rounded-full">
-                  <ShieldCheck className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center gap-1 bg-[#eaf8f1] border border-emerald-100 text-[#007a4d] text-xs font-bold px-2.5 py-0.5 rounded-full">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#007a4d]" />
                   <span>Verified Student</span>
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                {student.university} • <span className="text-gray-700 font-medium">{student.studentId}</span>
+                {student.university} • <span className="text-gray-800 font-semibold">{student.studentId}</span>
               </p>
               <p className="text-xs text-gray-400 mt-0.5">{student.major}</p>
             </div>
           </div>
 
-          {/* Quick Action Buttons */}
           <div className="flex items-center gap-3 w-full md:w-auto">
             <Link
               to="/browse-jobs"
-              className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-xl font-bold text-xs transition-colors"
+              className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 bg-gray-50 hover:bg-gray-100 text-gray-800 px-4 py-2.5 rounded-xl font-bold text-xs border border-gray-200 shadow-2xs transition-all"
             >
               <Briefcase className="w-4 h-4 text-[#007a4d]" />
               <span>Apply to Jobs</span>
@@ -217,7 +206,7 @@ export default function Dashboard() {
 
             <Link
               to="/create-gig"
-              className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-[#007a4d] hover:bg-[#006640] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all active:scale-95"
+              className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 bg-[#007a4d] hover:bg-[#006640] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-2xs transition-all active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Post New Gig</span>
@@ -225,14 +214,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ---------------- 2. Metrics & Earnings Grid ---------------- */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Available Balance</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 mt-1">${student.balance.toFixed(2)}</h3>
-              <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
+              <h3 className="text-2xl font-black text-gray-900 mt-1">${student.balance.toFixed(2)}</h3>
+              <span className="text-[11px] text-[#007a4d] font-semibold flex items-center gap-1 mt-1">
                 <TrendingUp className="w-3 h-3" /> Ready for withdrawal
               </span>
             </div>
@@ -241,21 +229,21 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Orders</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 mt-1">{orders.length}</h3>
-              <span className="text-[11px] text-gray-500 mt-1 block">Live Escrow Active</span>
+              <h3 className="text-2xl font-black text-gray-900 mt-1">{orders.length}</h3>
+              <span className="text-[11px] text-gray-500 mt-1 block font-medium">Live Escrow Active</span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
               <ShoppingBag className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pending Clearance</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 mt-1">${student.pendingClearance.toFixed(2)}</h3>
+              <h3 className="text-2xl font-black text-gray-900 mt-1">${student.pendingClearance.toFixed(2)}</h3>
               <span className="text-[11px] text-amber-600 font-semibold flex items-center gap-1 mt-1">
                 <Clock className="w-3 h-3" /> In Escrow security
               </span>
@@ -265,14 +253,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Student Rating Card */}
           <div 
             onClick={() => setActiveTab('reviews')}
-            className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between cursor-pointer hover:border-[#007a4d]/30 transition-all"
+            className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between cursor-pointer hover:border-emerald-200 transition-all"
           >
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Student Rating</p>
-              <h3 className="text-2xl font-extrabold text-gray-900 mt-1 flex items-center gap-1.5">
+              <h3 className="text-2xl font-black text-gray-900 mt-1 flex items-center gap-1.5">
                 {student.rating}
                 <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
               </h3>
@@ -287,8 +274,7 @@ export default function Dashboard() {
 
         </div>
 
-        {/* ---------------- 3. Tab Navigation ---------------- */}
-        <div className="flex border-b border-gray-200 gap-6 text-sm font-semibold overflow-x-auto">
+        <div className="flex border-b border-gray-200 gap-6 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-none">
           {[
             { id: 'overview', label: 'Recent Activity' },
             { id: 'gigs', label: 'My Posted Gigs' },
@@ -301,7 +287,7 @@ export default function Dashboard() {
               className={`pb-3 transition-colors relative whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'text-[#007a4d] border-b-2 border-[#007a4d]'
-                  : 'text-gray-500 hover:text-gray-800'
+                  : 'text-gray-400 hover:text-gray-700'
               }`}
             >
               {tab.label}
@@ -309,14 +295,11 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* ---------------- 4. Tab Content Area ---------------- */}
-
-        {/* Tab 1: Overview / Recent Activity */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="lg:col-span-2 bg-white rounded-3xl border border-gray-100 p-5 sm:p-7 shadow-2xs">
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-extrabold text-gray-900">Current Ongoing Tasks</h3>
+                <h3 className="text-base font-bold text-gray-900">Current Ongoing Tasks</h3>
                 <button onClick={() => setActiveTab('orders')} className="text-xs font-bold text-[#007a4d] hover:underline flex items-center gap-1">
                   View All <ChevronRight className="w-3.5 h-3.5" />
                 </button>
@@ -340,14 +323,13 @@ export default function Dashboard() {
                     </div>
 
                     <div className="flex items-center gap-3 self-end sm:self-center">
-                      <span className="text-sm font-extrabold text-[#007a4d]">${ord.amount.toFixed(2)}</span>
+                      <span className="text-sm font-black text-[#007a4d]">${ord.amount.toFixed(2)}</span>
 
-                      {/* Seller කෙනෙක් ලෙස In Progress නම් Deliver Work button එක පෙන්වයි */}
                       {ord.type.includes('Seller') && ord.status === 'In Progress' && (
                         <button
                           type="button"
                           onClick={() => handleOpenDeliveryModal(ord)}
-                          className="px-3.5 py-1.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+                          className="px-3.5 py-1.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all active:scale-95"
                         >
                           <UploadCloud className="w-3.5 h-3.5" />
                           <span>Deliver Work</span>
@@ -365,13 +347,12 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Quick Campus Tips & Trust Widget */}
-            <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-2xs flex flex-col justify-between">
               <div>
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#007a4d] flex items-center justify-center mb-4">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-extrabold text-gray-900">Escrow Security Active</h3>
+                <h3 className="text-base font-bold text-gray-900">Escrow Security Active</h3>
                 <p className="text-xs text-gray-500 leading-relaxed mt-2">
                   All peer payments are held safely in escrow. Once you submit your deliverable, the client reviews it to release funds directly to your wallet.
                 </p>
@@ -390,17 +371,16 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tab 2: My Posted Gigs */}
         {activeTab === 'gigs' && (
-          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
+          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-gray-100 gap-4">
               <div>
-                <h3 className="text-lg font-extrabold text-gray-900">My Service Gigs</h3>
+                <h3 className="text-lg font-bold text-gray-900">My Service Gigs</h3>
                 <p className="text-xs text-gray-500 mt-0.5">Manage your active service offerings and view statistics</p>
               </div>
               <Link
                 to="/create-gig"
-                className="inline-flex items-center gap-1.5 bg-[#007a4d] hover:bg-[#006640] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
+                className="inline-flex items-center gap-1.5 bg-[#007a4d] hover:bg-[#006640] text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create New Gig</span>
@@ -412,10 +392,10 @@ export default function Dashboard() {
                 <div key={gig.id} className="py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                   <div className="space-y-1 max-w-lg">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#007a4d] bg-[#eaf8f1] px-2 py-0.5 rounded-full border border-emerald-100">
                         {gig.category}
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${gig.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${gig.status === 'Active' ? 'bg-emerald-50 text-[#007a4d] border border-emerald-100' : 'bg-gray-100 text-gray-600'}`}>
                         {gig.status}
                       </span>
                     </div>
@@ -442,10 +422,9 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tab 3: All Orders */}
         {activeTab === 'orders' && (
-          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-            <h3 className="text-lg font-extrabold text-gray-900 mb-6">Complete Order Records</h3>
+          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs">
+            <h3 className="text-lg font-bold text-gray-900 mb-6">Complete Order Records</h3>
             
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -476,7 +455,7 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => handleOpenDeliveryModal(ord)}
-                            className="px-3 py-1 bg-[#007a4d] hover:bg-[#006640] text-white rounded-lg text-xs font-bold shadow-sm transition-all"
+                            className="px-3 py-1 bg-[#007a4d] hover:bg-[#006640] text-white rounded-lg text-xs font-bold shadow-2xs transition-all"
                           >
                             Deliver Work
                           </button>
@@ -494,14 +473,13 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tab 4: Reviews & Feedback */}
         {activeTab === 'reviews' && (
-          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4">
               <div>
-                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <span>Client & Peer Feedback</span>
-                  <span className="text-xs bg-emerald-50 text-[#007a4d] px-2.5 py-0.5 rounded-full font-bold">
+                  <span className="text-xs bg-[#eaf8f1] text-[#007a4d] border border-emerald-100 px-2.5 py-0.5 rounded-full font-bold">
                     100% Positive
                   </span>
                 </h3>
@@ -539,7 +517,7 @@ export default function Dashboard() {
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="text-sm font-bold text-gray-900">{rev.reviewer}</h4>
-                          <span className="text-[10px] text-emerald-700 bg-emerald-50 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="text-[10px] text-[#007a4d] bg-[#eaf8f1] border border-emerald-100 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                             <UserCheck className="w-3 h-3" /> Verified Order
                           </span>
                         </div>
@@ -573,22 +551,20 @@ export default function Dashboard() {
 
       </div>
 
-      {/* ---------------- 5. Order Deliverable Submission Modal ---------------- */}
       {isDeliveryModalOpen && selectedOrderForDelivery && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-xl border border-gray-100 space-y-6 relative animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-6 relative animate-in zoom-in-95 duration-200">
             
-            {/* Header */}
             <div className="flex items-start justify-between pb-4 border-b border-gray-100">
               <div>
-                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-bold text-[#007a4d] uppercase tracking-wider bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
                   Deliver Work & Complete Task
                 </span>
-                <h2 className="text-lg font-extrabold text-gray-900 mt-1">
+                <h2 className="text-lg font-bold text-gray-900 mt-1">
                   Deliver for: {selectedOrderForDelivery.id}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Client: <strong className="text-gray-800">{selectedOrderForDelivery.peer}</strong> • Value: ${selectedOrderForDelivery.amount}
+                  Client: <strong className="text-gray-800">{selectedOrderForDelivery.peer}</strong> • Value: <strong className="text-[#007a4d]">${selectedOrderForDelivery.amount}</strong>
                 </p>
               </div>
               <button
@@ -600,9 +576,7 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmitDelivery} className="space-y-4">
-              {/* Deliverable Work Link */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                   Deliverable Link (GitHub / Google Drive / Figma / Preview URL) *
@@ -623,7 +597,6 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              {/* Delivery Notes */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                   Delivery Message & Notes for Client *
@@ -634,28 +607,26 @@ export default function Dashboard() {
                   value={deliveryNotes}
                   onChange={(e) => setDeliveryNotes(e.target.value)}
                   placeholder="Summarize the completed deliverables, setup instructions, or notes on how you implemented the project..."
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800 leading-relaxed"
                 />
               </div>
 
-              {/* Security Badge */}
-              <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-100 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-800">
+                <CheckCircle2 className="w-4 h-4 text-[#007a4d] shrink-0" />
                 <span>Once submitted, the buyer gets 3 days to inspect and release the escrow funds.</span>
               </div>
 
-              {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={handleCloseDeliveryModal}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs"
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl font-bold text-xs shadow-sm flex items-center gap-2 active:scale-95 transition-all"
+                  className="px-6 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl font-bold text-xs shadow-2xs flex items-center gap-2 active:scale-95 transition-all"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Submit Deliverable</span>
