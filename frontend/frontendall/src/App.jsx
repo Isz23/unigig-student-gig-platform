@@ -23,12 +23,8 @@ import PostJob from './pages/Client/PostJob';
 import BrowseJobs from './pages/Student/BrowseJobs';
 import ClientProfile from './pages/Client/ClientProfile';
 
-<<<<<<< Updated upstream
-=======
-// Admin Pages
-import AdminDashboard from './pages/Admin/AdminDashboard';
 
->>>>>>> Stashed changes
+
 function App() {
   return (
     <Router>
@@ -43,7 +39,7 @@ function App() {
             <Route path="/signup" element={<SignUp />} />
             <Route path="/gig/:id" element={<GigDetails />} />
 
-            {/* Student Profile Routes (දෙයාකාරයෙන්ම match වන සේ) */}
+            {/* Student Profile Routes */}
             <Route path="/student/:id" element={<StudentProfile />} />
             <Route path="/student/profile/:id" element={<StudentProfile />} />
 
@@ -57,12 +53,9 @@ function App() {
             <Route path="/clientdashboard" element={<ClientDashboard />} />
             <Route path="/post-job" element={<PostJob />} />
             <Route path="/client/:id" element={<ClientProfile />} />
-<<<<<<< Updated upstream
-=======
 
             {/* Admin Routes */}
-            <Route path="/AdminDashboard" element={<AdminDashboard />} />
->>>>>>> Stashed changes
+            {/* <Route path="/AdminDashboard" element={<AdminDashboard />} /> */}
           </Routes>
         </main>
 
