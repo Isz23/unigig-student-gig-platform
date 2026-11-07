@@ -23,7 +23,8 @@ import PostJob from './pages/Client/PostJob';
 import BrowseJobs from './pages/Student/BrowseJobs';
 import ClientProfile from './pages/Client/ClientProfile';
 
-
+// Admin Pages
+// import AdminDashboard from './pages/Admin/AdminDashboard';
 
 function App() {
   return (

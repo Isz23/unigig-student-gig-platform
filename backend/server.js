@@ -7,6 +7,8 @@ import connectDB from './config/db.js';
 import gigRoutes from './routes/gigRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import jobRoutes from './routes/jobRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
 
 dotenv.config();
 
@@ -14,7 +16,6 @@ connectDB();
 
 const app = express();
 
-// Allowed Origins (5173, 5174 සහ .env හි ඇති URL)
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
@@ -35,15 +36,17 @@ app.use(cors({
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  res.send('🚀 UniGig Backend Running...');
+  res.send('UniGig Backend Running...');
 });
 
 // Routes Mount
 app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/messages', messageRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
