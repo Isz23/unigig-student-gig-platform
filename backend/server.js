@@ -7,6 +7,7 @@ import connectDB from './config/db.js';
 import gigRoutes from './routes/gigRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import jobRoutes from './routes/jobRoutes.js';
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/jobs', jobRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search,
@@ -11,107 +11,70 @@ import {
   ShieldCheck,
   Sparkles,
   ArrowRight,
-  Lock
+  Lock,
+  Loader2
 } from 'lucide-react';
+import API from '../../api/axios';
 
 export default function BrowseJobs() {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Current Logged-in User
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Modal & Bid submission state
   const [selectedJob, setSelectedJob] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
-  const [deliveryTime, setDeliveryTime] = useState('2 Days');
+  const [deliveryDays, setDeliveryDays] = useState(3);
   const [coverLetter, setCoverLetter] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const jobPosts = [
-    {
-      id: 'JOB-102',
-      title: 'Need React & Tailwind Developer for Annual Tech Fest Landing Page',
-      category: 'Coding & Tech',
-      budget: 50.0,
-      deadline: 'Nov 05, 2026',
-      client: {
-        id: 'cl-101',
-        name: 'Kavindu Perera',
-        university: 'University of Moratuwa',
-        role: 'IEEE Student Branch',
-      },
-      proposalsCount: 6,
-      postedDate: '1 day ago',
-      description:
-        'We require an interactive, mobile-responsive landing page for our university tech symposium. Starter Figma designs are ready. Needs clean component code in React & Tailwind CSS.',
-      skills: ['React', 'Tailwind CSS', 'Responsive UI', 'Git'],
-    },
-    {
-      id: 'JOB-105',
-      title: 'Object-Oriented Programming (Java) Lab Assignment Bug Fixing',
-      category: 'Coding & Tech',
-      budget: 30.0,
-      deadline: 'Oct 31, 2026',
-      client: {
-        id: 'cl-102',
-        name: 'Sanduni Fernando',
-        university: 'University of Peradeniya',
-        role: 'Faculty of Engineering',
-      },
-      proposalsCount: 3,
-      postedDate: '4 hours ago',
-      description:
-        'Having runtime exceptions in an OOP Java project using polymorphism and file handling. Need an experienced student peer to debug and explain the corrections via clean code.',
-      skills: ['Java', 'OOP', 'Debugging', 'Exception Handling'],
-    },
-    {
-      id: 'JOB-098',
-      title: 'Peer Tutoring for Data Structures & Algorithms (Trees & Graph Traversal)',
-      category: 'Academics & Tutoring',
-      budget: 25.0,
-      deadline: 'Nov 02, 2026',
-      client: {
-        id: 'cl-103',
-        name: 'Tharindu Wickramasinghe',
-        university: 'SLIIT',
-        role: 'Computing Faculty',
-      },
-      proposalsCount: 5,
-      postedDate: '2 days ago',
-      description:
-        'Looking for an ICT/CS senior student to conduct a 1-on-1 virtual revision session covering BFS, DFS, and Binary Search Tree balancing ahead of semester midterms.',
-      skills: ['Data Structures', 'Algorithms', 'Tutoring'],
-    },
-    {
-      id: 'JOB-110',
-      title: 'Event T-Shirt & Digital Badge Vector Illustration',
-      category: 'Graphics & UI/UX',
-      budget: 40.0,
-      deadline: 'Nov 07, 2026',
-      client: {
-        id: 'cl-104',
-        name: 'Ahamed Musfira',
-        university: 'South Eastern University of Sri Lanka',
-        role: 'Student Union',
-      },
-      proposalsCount: 4,
-      postedDate: 'Just now',
-      description:
-        'Need vector badge emblems and modern minimalist t-shirt artwork for our upcoming campus sports meet. Deliverables must include editable AI/SVG vector files.',
-      skills: ['Adobe Illustrator', 'Vector Art', 'Graphic Design'],
-    },
-  ];
+  // Fetch real jobs from Backend API
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get('/jobs');
+      if (res.data?.success) {
+        setJobs(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching jobs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
 
   const categories = [
     'All',
-    'Coding & Tech',
     'Academics & Tutoring',
+    'Coding & Tech',
     'Graphics & UI/UX',
     'Writing & Proofreading',
+    'Video & Media',
+    'Campus Services',
   ];
 
-  const filteredJobs = jobPosts.filter((job) => {
+  const filteredJobs = jobs.filter((job) => {
     const matchesSearch =
-      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.skills.some((skill) => skill.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      job.client.university.toLowerCase().includes(searchTerm.toLowerCase());
+      job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.client?.university?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.client?.name?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesCategory =
       selectedCategory === 'All' || job.category === selectedCategory;
@@ -120,8 +83,23 @@ export default function BrowseJobs() {
   });
 
   const handleOpenBidModal = (job) => {
+    // Client protection
+    const jobClientId = job.client?._id ? job.client._id.toString() : job.client?.toString();
+    const currentUserId = currentUser?._id ? currentUser._id.toString() : currentUser?.id?.toString();
+
+    if (jobClientId === currentUserId) {
+      alert('You cannot bid on your own posted task.');
+      return;
+    }
+
+    if (currentUser?.role === 'client') {
+      alert('Client accounts cannot submit bids. Please use a student account to bid.');
+      return;
+    }
+
     setSelectedJob(job);
-    setBidAmount(job.budget.toString());
+    setBidAmount(job.budget?.toString() || '');
+    setDeliveryDays(3);
     setCoverLetter('');
     setIsModalOpen(true);
   };
@@ -131,15 +109,46 @@ export default function BrowseJobs() {
     setSelectedJob(null);
   };
 
-  const handleSubmitProposal = (e) => {
+  const handleSubmitProposal = async (e) => {
     e.preventDefault();
-    handleCloseModal();
+    if (!selectedJob) return;
+
+    if (!bidAmount || Number(bidAmount) <= 0) {
+      alert('Please enter a valid bid amount.');
+      return;
+    }
+
+    if (!coverLetter.trim()) {
+      alert('Please provide a short cover note or pitch.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const jobId = selectedJob._id;
+      const res = await API.post(`/jobs/${jobId}/proposals`, {
+        bidAmount: Number(bidAmount),
+        deliveryDays: Number(deliveryDays),
+        coverLetter: coverLetter.trim()
+      });
+
+      if (res.data?.success) {
+        alert('🎉 Proposal submitted successfully! The client will review your bid.');
+        handleCloseModal();
+        fetchJobs();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit proposal.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50/60 py-8 sm:py-10 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-6xl mx-auto space-y-7">
 
+        {/* Header Banner */}
         <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#007a4d] bg-[#eaf8f1] px-3 py-1 rounded-full border border-emerald-100">
@@ -162,6 +171,7 @@ export default function BrowseJobs() {
           </Link>
         </div>
 
+        {/* Search & Filter Bar */}
         <div className="bg-white rounded-2xl border border-gray-100 p-3.5 sm:p-4 shadow-2xs space-y-3 sm:space-y-4">
           <div className="relative w-full">
             <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -202,12 +212,16 @@ export default function BrowseJobs() {
           </div>
         </div>
 
+        {/* Job Listings Area */}
         <div className="space-y-4">
-          {filteredJobs.length === 0 ? (
+          {loading ? (
+            <div className="bg-white rounded-3xl border border-gray-100 p-16 text-center shadow-2xs flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-7 h-7 text-[#007a4d] animate-spin" />
+              <p className="text-xs font-semibold text-gray-500">Loading campus task requests...</p>
+            </div>
+          ) : filteredJobs.length === 0 ? (
             <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center max-w-md mx-auto shadow-2xs space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center mx-auto">
-                <Briefcase className="w-6 h-6" />
-              </div>
+              <Briefcase className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#007a4d] flex items-center justify-center mx-auto" />
               <h3 className="text-sm font-bold text-gray-900">No Job Requests Found</h3>
               <p className="text-xs text-gray-500 leading-relaxed">
                 Try searching with different keywords or switch categories to view other student task requests.
@@ -218,96 +232,110 @@ export default function BrowseJobs() {
                   setSearchTerm('');
                   setSelectedCategory('All');
                 }}
-                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-[#007a4d] hover:bg-[#00633e] text-white text-xs font-bold rounded-xl transition-all"
+                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-[#007a4d] hover:bg-[#00633e] text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 Reset Search
               </button>
             </div>
           ) : (
-            filteredJobs.map((job) => (
-              <div
-                key={job.id}
-                className="bg-white rounded-3xl border border-gray-100 p-5 sm:p-7 shadow-2xs hover:border-emerald-200 hover:shadow-md transition-all space-y-4"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-mono font-bold text-gray-400">{job.id}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#007a4d] bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
-                      {job.category}
-                    </span>
-                    <span className="text-xs text-gray-400">Posted {job.postedDate}</span>
-                  </div>
+            filteredJobs.map((job) => {
+              const displayId = `JOB-${job._id?.slice(-4).toUpperCase()}`;
+              const clientName = job.client?.name || 'Verified Client';
+              const clientUniversity = job.client?.university || 'Sri Lankan University';
+              const proposalsCount = job.proposals?.length || 0;
+              const formattedDeadline = job.deadline
+                ? new Date(job.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Flexible';
+              const postedDate = job.createdAt
+                ? new Date(job.createdAt).toLocaleDateString()
+                : 'Recently';
 
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <span className="text-xs text-gray-400 font-medium">Client Budget:</span>
-                    <span className="text-lg sm:text-xl font-black text-[#007a4d]">${job.budget.toFixed(2)}</span>
-                  </div>
-                </div>
+              const jobClientId = job.client?._id ? job.client._id.toString() : job.client?.toString();
+              const currentUserId = currentUser?._id ? currentUser._id.toString() : currentUser?.id?.toString();
+              const isOwnTask = jobClientId === currentUserId;
+              const isClient = currentUser?.role === 'client';
 
-                <div className="space-y-1.5">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-snug">
-                    {job.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
-                    {job.description}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {job.skills.map((skill, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[11px] font-semibold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-200/80"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <Link
-                    to={`/client/${job.client.id}`}
-                    className="flex items-center gap-3 hover:opacity-90 transition-opacity group"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#007a4d] border border-emerald-100 flex items-center justify-center font-bold text-xs uppercase group-hover:bg-[#007a4d] group-hover:text-white transition-colors">
-                      {job.client.name.substring(0, 2)}
+              return (
+                <div
+                  key={job._id}
+                  className="bg-white rounded-3xl border border-gray-100 p-5 sm:p-7 shadow-2xs hover:border-emerald-200 hover:shadow-md transition-all space-y-4"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono font-bold text-gray-400">{displayId}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#007a4d] bg-[#eaf8f1] px-2.5 py-0.5 rounded-full border border-emerald-100">
+                        {job.category}
+                      </span>
+                      <span className="text-xs text-gray-400">Posted {postedDate}</span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-gray-900 group-hover:text-[#007a4d] transition-colors">
-                          {job.client.name}
-                        </span>
-                        <ShieldCheck className="w-3.5 h-3.5 text-[#007a4d]" />
+
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
+                      <span className="text-xs text-gray-400 font-medium">Client Budget:</span>
+                      <span className="text-lg sm:text-xl font-black text-[#007a4d]">
+                        ${Number(job.budget || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-snug">
+                      {job.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                      {job.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#007a4d] border border-emerald-100 flex items-center justify-center font-bold text-xs uppercase">
+                        {clientName.substring(0, 2)}
                       </div>
-                      <p className="text-[11px] text-gray-400">
-                        {job.client.role} • {job.client.university}
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-gray-900">
+                            {clientName}
+                          </span>
+                          <ShieldCheck className="w-3.5 h-3.5 text-[#007a4d]" />
+                        </div>
+                        <p className="text-[11px] text-gray-400">
+                          {clientUniversity}
+                        </p>
+                      </div>
                     </div>
-                  </Link>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-                    <div className="text-left sm:text-right text-xs">
-                      <span className="font-bold text-gray-800">{job.proposalsCount} Proposals</span>
-                      <p className="text-[11px] text-gray-400">Deadline: {job.deadline}</p>
+                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                      <div className="text-left sm:text-right text-xs">
+                        <span className="font-bold text-gray-800">{proposalsCount} Proposals</span>
+                        <p className="text-[11px] text-gray-400">Deadline: {formattedDeadline}</p>
+                      </div>
+
+                      {/* Client Protection / Own Task Restriction */}
+                      {isOwnTask || isClient ? (
+                        <span className="px-4 py-2 bg-gray-100 text-gray-500 rounded-xl text-xs font-bold border border-gray-200">
+                          {isOwnTask ? 'Your Posted Task' : 'Client View Only'}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenBidModal(job)}
+                          className="px-4 sm:px-5 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                        >
+                          <span>Submit Proposal</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenBidModal(job)}
-                      className="px-4 sm:px-5 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap"
-                    >
-                      <span>Submit Proposal</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
       </div>
 
+      {/* Proposal Submission Modal */}
       {isModalOpen && selectedJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-6 relative animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
@@ -321,13 +349,14 @@ export default function BrowseJobs() {
                   Bid for: {selectedJob.title}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Client: <span className="font-semibold text-gray-700">{selectedJob.client.name}</span> • Client Budget: <span className="font-bold text-[#007a4d]">${selectedJob.budget}</span>
+                  Client: <span className="font-semibold text-gray-700">{selectedJob.client?.name || 'Client'}</span> • Client Budget:{' '}
+                  <span className="font-bold text-[#007a4d]">${selectedJob.budget}</span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0"
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -356,20 +385,20 @@ export default function BrowseJobs() {
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    Turnaround Time *
+                    Turnaround Time (Days) *
                   </label>
                   <div className="relative">
                     <Clock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <select
-                      value={deliveryTime}
-                      onChange={(e) => setDeliveryTime(e.target.value)}
+                      value={deliveryDays}
+                      onChange={(e) => setDeliveryDays(Number(e.target.value))}
                       className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:border-[#007a4d] focus:bg-white cursor-pointer"
                     >
-                      <option>1 Day (Express)</option>
-                      <option>2 Days</option>
-                      <option>3 Days</option>
-                      <option>5 Days</option>
-                      <option>7 Days</option>
+                      <option value={1}>1 Day (Express)</option>
+                      <option value={2}>2 Days</option>
+                      <option value={3}>3 Days</option>
+                      <option value={5}>5 Days</option>
+                      <option value={7}>7 Days</option>
                     </select>
                   </div>
                 </div>
@@ -384,7 +413,7 @@ export default function BrowseJobs() {
                   rows={4}
                   value={coverLetter}
                   onChange={(e) => setCoverLetter(e.target.value)}
-                  placeholder="Explain why your experience fits this task, the tech stack you will use, and your past coursework/portfolio samples..."
+                  placeholder="Explain why your skills fit this task, your planned implementation approach, and relevant coursework experience..."
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#007a4d] focus:bg-white text-gray-800 leading-relaxed"
                 />
               </div>
@@ -399,17 +428,28 @@ export default function BrowseJobs() {
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
+                  disabled={submitting}
                   onClick={handleCloseModal}
-                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs transition-colors"
+                  className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 font-bold text-xs transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl font-bold text-xs shadow-xs flex items-center gap-2 active:scale-95 transition-all"
+                  disabled={submitting}
+                  className="px-6 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl font-bold text-xs shadow-xs flex items-center gap-2 active:scale-95 transition-all cursor-pointer disabled:bg-gray-400"
                 >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Send Proposal</span>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-3.5 h-3.5" />
+                      <span>Send Proposal</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
