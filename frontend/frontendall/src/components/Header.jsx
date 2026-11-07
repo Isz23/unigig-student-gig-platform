@@ -8,7 +8,8 @@ import {
   Menu,
   X,
   MessageSquare,
-  Plus
+  Plus,
+  LogOut
 } from 'lucide-react';
 import NotificationDropdown from './NotificationDropdown';
 
@@ -20,6 +21,51 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All Categories');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      return saved && token ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      setUser(saved && token ? JSON.parse(saved) : null);
+    } catch {
+      setUser(null);
+    }
+  }, [location.pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    navigate('/login');
+  };
+
+  const handleStudentHubClick = () => {
+    if (user?.role === 'student') {
+      navigate('/stddashboard');
+    } else {
+      navigate('/signup?role=student');
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const handleClientHubClick = () => {
+    if (user?.role === 'client') {
+      navigate('/clientdashboard');
+    } else {
+      navigate('/signup?role=client');
+    }
+    setMobileMenuOpen(false);
+  };
 
   const hideCategoryBar =
     location.pathname === '/login' ||
@@ -133,7 +179,7 @@ export default function Header() {
           <button
             type="submit"
             aria-label="Search"
-            className="m-1 bg-[#007a4d] hover:bg-[#00633e] text-white p-2 rounded-lg transition-colors flex items-center justify-center shrink-0 shadow-2xs active:scale-95"
+            className="m-1 bg-[#007a4d] hover:bg-[#00633e] text-white p-2 rounded-lg transition-colors flex items-center justify-center shrink-0 shadow-2xs active:scale-95 cursor-pointer"
           >
             <Search className="w-4 h-4 stroke-[2.5]" />
           </button>
@@ -173,72 +219,93 @@ export default function Header() {
             Task Requests
           </Link>
 
-          <div className="h-4 w-px bg-gray-200"></div>
+          {user ? (
+            <>
+              <div className="h-4 w-px bg-gray-200"></div>
 
-          <Link
-            to="/stddashboard"
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-              location.pathname.startsWith('/stddashboard')
-                ? 'bg-[#007a4d] text-white'
-                : 'text-[#007a4d] bg-[#eaf8f1] hover:bg-emerald-100'
-            }`}
-          >
-            Student Hub
-          </Link>
+              <button
+                type="button"
+                onClick={handleStudentHubClick}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  location.pathname.startsWith('/stddashboard')
+                    ? 'bg-[#007a4d] text-white'
+                    : 'text-[#007a4d] bg-[#eaf8f1] hover:bg-emerald-100'
+                }`}
+              >
+                Student Hub
+              </button>
 
-          <Link
-            to="/clientdashboard"
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-              location.pathname.startsWith('/clientdashboard')
-                ? 'bg-blue-700 text-white'
-                : 'text-blue-800 bg-blue-50 hover:bg-blue-100'
-            }`}
-          >
-            Client Hub
-          </Link>
+              <button
+                type="button"
+                onClick={handleClientHubClick}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  location.pathname.startsWith('/clientdashboard')
+                    ? 'bg-blue-700 text-white'
+                    : 'text-blue-800 bg-blue-50 hover:bg-blue-100'
+                }`}
+              >
+                Client Hub
+              </button>
 
-          <Link
-            to="/messages"
-            aria-label="Messages"
-            className="p-2 text-gray-500 hover:text-[#007a4d] hover:bg-emerald-50/60 rounded-xl transition-colors"
-          >
-            <MessageSquare className="w-4 h-4" />
-          </Link>
+              <Link
+                to="/messages"
+                aria-label="Messages"
+                className="p-2 text-gray-500 hover:text-[#007a4d] hover:bg-emerald-50/60 rounded-xl transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+              </Link>
 
-          <div className="pl-1 border-l border-gray-100 flex items-center gap-2">
-            <NotificationDropdown />
+              <div className="pl-1 border-l border-gray-100 flex items-center gap-2">
+                <NotificationDropdown />
 
-            <Link
-              to="/login"
-              className="text-gray-700 hover:text-gray-900 font-bold px-2 py-1.5 transition-colors text-xs"
-            >
-              Log In
-            </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-1.5 text-gray-700 hover:text-red-600 hover:bg-red-50 font-bold px-3 py-1.5 rounded-xl transition-colors text-xs cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="pl-1 border-l border-gray-100 flex items-center gap-2">
+              <Link
+                to="/login"
+                className="text-gray-700 hover:text-gray-900 font-bold px-2 py-1.5 transition-colors text-xs"
+              >
+                Log In
+              </Link>
 
-            <Link
-              to="/signup"
-              className="bg-[#007a4d] hover:bg-[#00633e] text-white font-bold px-4 py-2 rounded-xl transition-all shadow-2xs active:scale-95 text-xs"
-            >
-              Sign Up
-            </Link>
-          </div>
+              <Link
+                to="/signup"
+                className="bg-[#007a4d] hover:bg-[#00633e] text-white font-bold px-4 py-2 rounded-xl transition-all shadow-2xs active:scale-95 text-xs"
+              >
+                Sign Up
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="lg:hidden flex items-center gap-1.5">
-          <Link
-            to="/messages"
-            aria-label="Messages"
-            className="p-1.5 text-gray-600 hover:text-[#007a4d] transition-colors"
-          >
-            <MessageSquare className="w-5 h-5" />
-          </Link>
+          {user && (
+            <>
+              <Link
+                to="/messages"
+                aria-label="Messages"
+                className="p-1.5 text-gray-600 hover:text-[#007a4d] transition-colors"
+              >
+                <MessageSquare className="w-5 h-5" />
+              </Link>
 
-          <NotificationDropdown />
+              <NotificationDropdown />
+            </>
+          )}
 
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-gray-600 hover:text-gray-900 focus:outline-none"
+            className="p-2 text-gray-600 hover:text-gray-900 focus:outline-none cursor-pointer"
             aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -258,7 +325,7 @@ export default function Header() {
                     key={cat.name}
                     type="button"
                     onClick={() => handleCategoryClick(cat.name)}
-                    className={`whitespace-nowrap px-3 py-1.5 rounded-full font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-full font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                       isSelected
                         ? 'bg-[#007a4d] text-white shadow-2xs'
                         : 'bg-gray-100/70 text-gray-600 hover:text-gray-900 hover:bg-gray-200/70'
@@ -289,7 +356,7 @@ export default function Header() {
             />
             <button
               type="submit"
-              className="bg-[#007a4d] hover:bg-[#00633e] text-white p-2 rounded-lg transition-colors shrink-0"
+              className="bg-[#007a4d] hover:bg-[#00633e] text-white p-2 rounded-lg transition-colors shrink-0 cursor-pointer"
             >
               <Search className="w-4 h-4" />
             </button>
@@ -329,46 +396,65 @@ export default function Header() {
               Task Requests (Bidding)
             </Link>
 
-            <Link
-              to="/create-gig"
-              className="py-2.5 px-3 rounded-xl text-[#007a4d] bg-[#eaf8f1] flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Post a New Gig</span>
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  to="/create-gig"
+                  className="py-2.5 px-3 rounded-xl text-[#007a4d] bg-[#eaf8f1] flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Post a New Gig</span>
+                </Link>
 
-            <div className="h-px bg-gray-100 my-1" />
+                <div className="h-px bg-gray-100 my-1" />
 
-            <div className="flex gap-2 py-1">
-              <Link
-                to="/stddashboard"
-                className="flex-1 text-center py-2.5 text-xs font-bold text-[#007a4d] bg-[#eaf8f1] rounded-xl border border-emerald-100"
-              >
-                Student Hub
-              </Link>
-              <Link
-                to="/clientdashboard"
-                className="flex-1 text-center py-2.5 text-xs font-bold text-blue-800 bg-blue-50 rounded-xl border border-blue-100"
-              >
-                Client Hub
-              </Link>
-            </div>
+                <div className="flex gap-2 py-1">
+                  <button
+                    type="button"
+                    onClick={handleStudentHubClick}
+                    className="flex-1 text-center py-2.5 text-xs font-bold text-[#007a4d] bg-[#eaf8f1] rounded-xl border border-emerald-100 cursor-pointer"
+                  >
+                    Student Hub
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClientHubClick}
+                    className="flex-1 text-center py-2.5 text-xs font-bold text-blue-800 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer"
+                  >
+                    Client Hub
+                  </button>
+                </div>
 
-            <div className="h-px bg-gray-100 my-1" />
+                <div className="h-px bg-gray-100 my-1" />
 
-            <Link
-              to="/login"
-              className="text-gray-700 font-bold py-2.5 px-3 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              Log In
-            </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full text-left flex items-center gap-2 text-red-600 hover:bg-red-50 font-bold py-2.5 px-3 rounded-xl transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="h-px bg-gray-100 my-1" />
 
-            <Link
-              to="/signup"
-              className="w-full bg-[#007a4d] hover:bg-[#00633e] text-white font-bold py-3 rounded-xl text-center block mt-1 shadow-2xs transition-all active:scale-95"
-            >
-              Sign Up
-            </Link>
+                <Link
+                  to="/login"
+                  className="text-gray-700 font-bold py-2.5 px-3 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  Log In
+                </Link>
+
+                <Link
+                  to="/signup"
+                  className="w-full bg-[#007a4d] hover:bg-[#00633e] text-white font-bold py-3 rounded-xl text-center block mt-1 shadow-2xs transition-all active:scale-95"
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
