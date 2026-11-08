@@ -1,6 +1,7 @@
 import Job from '../models/Job.js';
 import Order from '../models/Order.js';
 import User from '../models/User.js';
+import { createNotification } from './notificationController.js';
 
 // @desc    Create a new job post (Client only)
 // @route   POST /api/jobs
@@ -26,6 +27,20 @@ export const createJob = async (req, res) => {
       status: 'open',
       proposals: []
     });
+
+    // 1. Notification to Client confirming task post
+    try {
+      await createNotification({
+        recipient: req.user._id,
+        sender: req.user._id,
+        type: 'job',
+        title: 'Task Request Posted 🚀',
+        message: `Your task "${job.title}" has been posted with a budget of $${Number(job.budget).toFixed(2)}. Open for student bids!`,
+        link: '/clientdashboard'
+      });
+    } catch (notifErr) {
+      console.warn('Failed to send job creation notification:', notifErr.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -131,15 +146,30 @@ export const submitProposal = async (req, res) => {
       });
     }
 
-    job.proposals.push({
+    const newProposal = {
       student: req.user._id,
       bidAmount: Number(bidAmount),
       deliveryDays: Number(deliveryDays) || 3,
-      coverLetter,
+      coverLetter: coverLetter || '',
       status: 'pending'
-    });
+    };
 
+    job.proposals.push(newProposal);
     await job.save();
+
+    // 2. Notification to Client when a student bids
+    try {
+      await createNotification({
+        recipient: job.client,
+        sender: req.user._id,
+        type: 'bid',
+        title: 'New Student Proposal! 📝',
+        message: `${req.user.name || 'A student'} placed a bid of $${Number(bidAmount).toFixed(2)} on "${job.title}".`,
+        link: '/clientdashboard'
+      });
+    } catch (notifErr) {
+      console.warn('Failed to send bid notification to client:', notifErr.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -199,7 +229,7 @@ export const acceptProposalAndCreateOrder = async (req, res) => {
       packageTier: 'Custom Task Request',
       price: proposal.bidAmount,
       deliveryDeadline: calculatedDeadline,
-      requirements: `Task: ${job.title}\nDetails: ${job.description}\nProposal Notes: ${proposal.coverLetter}`,
+      requirements: `Task: ${job.title}\nDetails: ${job.description}\nProposal Notes: ${proposal.coverLetter || ''}`,
       status: 'in_progress',
       escrowStatus: 'held_in_escrow'
     });
@@ -208,6 +238,31 @@ export const acceptProposalAndCreateOrder = async (req, res) => {
     await User.findByIdAndUpdate(proposal.student, {
       $inc: { pendingEscrowBalance: proposal.bidAmount }
     });
+
+    // 4. Notifications
+    try {
+      // To Student
+      await createNotification({
+        recipient: proposal.student,
+        sender: req.user._id,
+        type: 'order_placed',
+        title: 'Proposal Accepted! 🎉',
+        message: `${req.user.name || 'Client'} accepted your bid for "${job.title}"! $${Number(proposal.bidAmount).toFixed(2)} held in Escrow.`,
+        link: '/stddashboard'
+      });
+
+      // To Client
+      await createNotification({
+        recipient: req.user._id,
+        sender: req.user._id,
+        type: 'order_placed',
+        title: 'Order Created & Escrow Held 🔒',
+        message: `You accepted a bid for "${job.title}". $${Number(proposal.bidAmount).toFixed(2)} secured in Escrow.`,
+        link: '/clientdashboard'
+      });
+    } catch (notifErr) {
+      console.warn('Failed to send proposal acceptance notifications:', notifErr.message);
+    }
 
     res.status(200).json({
       success: true,

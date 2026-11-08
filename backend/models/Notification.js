@@ -5,39 +5,55 @@ const notificationSchema = new mongoose.Schema(
     recipient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
-      index: true
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    type: {
-      type: String,
-      enum: ['message', 'order_placed', 'order_delivered', 'order_completed', 'system'],
-      default: 'system'
+      ref: 'User',
     },
     title: {
       type: String,
-      required: true
+      required: true,
     },
     message: {
       type: String,
-      required: true
+      required: true,
+    },
+    type: {
+      type: String,
+      default: 'system',
     },
     link: {
       type: String,
-      default: ''
+      default: '/clientdashboard',
+    },
+    read: {
+      type: Boolean,
+      default: false,
     },
     isRead: {
       type: Boolean,
-      default: false
-    }
+      default: false,
+    },
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
-const Notification = mongoose.model('Notification', notificationSchema);
-export default Notification;
+// Auto-sync recipient and user fields so both always match
+notificationSchema.pre('save', function (next) {
+  if (!this.recipient && this.user) {
+    this.recipient = this.user;
+  }
+  if (!this.user && this.recipient) {
+    this.user = this.recipient;
+  }
+  if (this.read !== undefined && this.isRead === undefined) {
+    this.isRead = this.read;
+  }
+  next();
+});
+
+export default mongoose.model('Notification', notificationSchema);

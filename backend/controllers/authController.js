@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import generateToken from '../Utils/generateToken.js';
+import { createNotification } from './notificationController.js';
 
 // @desc    Register a new user (Student / Client)
 // @route   POST /api/auth/register
@@ -211,6 +212,21 @@ export const depositFunds = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    // Trigger Deposit Notification
+    try {
+      await createNotification({
+        recipient: user._id,
+        user: user._id,
+        sender: user._id,
+        type: 'wallet',
+        title: 'Funds Deposited Successfully 💰',
+        message: `$${depositAmt.toFixed(2)} has been credited to your UniGig Escrow Wallet.`,
+        link: user.role === 'client' ? '/clientdashboard' : '/stddashboard'
+      });
+    } catch (notifErr) {
+      console.warn('Failed to send deposit notification:', notifErr.message);
+    }
+
     res.status(200).json({
       success: true,
       message: `$${depositAmt.toFixed(2)} deposited to wallet successfully!`,
@@ -252,6 +268,21 @@ export const withdrawFunds = async (req, res) => {
     user.walletBalance -= withdrawAmt;
     await user.save();
 
+    // Trigger Withdrawal Notification
+    try {
+      await createNotification({
+        recipient: user._id,
+        user: user._id,
+        sender: user._id,
+        type: 'wallet',
+        title: 'Withdrawal Processed 💳',
+        message: `$${withdrawAmt.toFixed(2)} withdrawal requested via ${method ? method.toUpperCase() : 'transfer'}.`,
+        link: user.role === 'client' ? '/clientdashboard' : '/stddashboard'
+      });
+    } catch (notifErr) {
+      console.warn('Failed to send withdrawal notification:', notifErr.message);
+    }
+
     res.status(200).json({
       success: true,
       message: `$${withdrawAmt.toFixed(2)} withdrawal requested successfully via ${method ? method.toUpperCase() : 'standard transfer'}!`,
@@ -268,3 +299,7 @@ export const withdrawFunds = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Aliases for compatibility
+export const deposit = depositFunds;
+export const withdraw = withdrawFunds;

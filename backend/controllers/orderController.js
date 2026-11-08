@@ -15,13 +15,11 @@ export const createOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Gig not found' });
     }
 
-    // Determine price based on tier (or base price)
     let orderPrice = gig.price || 1500;
     if (gig.packages && gig.packages[packageTier?.toLowerCase()]) {
       orderPrice = gig.packages[packageTier.toLowerCase()].price;
     }
 
-    // Set deadline
     const days = deliveryDays || 3;
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + days);
@@ -117,7 +115,8 @@ export const getSellerOrders = async (req, res) => {
 // @access  Private (Buyer or Seller only)
 export const getOrderById = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id)
+    const targetId = req.params.id || req.params.orderId;
+    const order = await Order.findById(targetId)
       .populate('gig')
       .populate('buyer', 'name email avatar')
       .populate('seller', 'name email avatar studentRegNumber');
@@ -129,8 +128,8 @@ export const getOrderById = async (req, res) => {
       });
     }
 
-    const buyerId = order.buyer._id ? order.buyer._id.toString() : order.buyer.toString();
-    const sellerId = order.seller._id ? order.seller._id.toString() : order.seller.toString();
+    const buyerId = order.buyer?._id ? order.buyer._id.toString() : order.buyer?.toString();
+    const sellerId = order.seller?._id ? order.seller._id.toString() : order.seller?.toString();
     const currentUserId = req.user._id.toString();
 
     if (buyerId !== currentUserId && sellerId !== currentUserId) {
@@ -153,19 +152,21 @@ export const getOrderById = async (req, res) => {
   }
 };
 
-// @desc    Student submits the completed deliverable
-// @route   PUT /api/orders/:id/submit
+// @desc    Student submits the completed deliverable (Inspect Work)
+// @route   PUT /api/orders/:id/submit or /:orderId/submit
 // @access  Private (Seller only)
 export const submitWork = async (req, res) => {
   try {
+    const targetId = req.params.id || req.params.orderId;
     const { workUrl, notes } = req.body;
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(targetId);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    if (order.seller.toString() !== req.user._id.toString()) {
+    const sellerId = order.seller?._id ? order.seller._id.toString() : order.seller?.toString();
+    if (sellerId !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: Only the assigned student can submit work'
@@ -173,20 +174,20 @@ export const submitWork = async (req, res) => {
     }
 
     order.submission = {
-      workUrl,
+      workUrl: workUrl || '',
       notes: notes || '',
       submittedAt: new Date()
     };
     order.status = 'delivered';
-
     await order.save();
 
+    const buyerId = order.buyer?._id || order.buyer;
     await createNotification({
-      recipient: order.buyer,
+      recipient: buyerId,
       sender: req.user._id,
       type: 'order_delivered',
       title: 'Deliverable Ready for Review 🚀',
-      message: `${req.user.name || 'Student'} submitted the project deliverable for ORD-${order._id.toString().slice(-4).toUpperCase()}. Please inspect and approve.`,
+      message: `${req.user.name || 'Student'} submitted deliverables for ORD-${order._id.toString().slice(-4).toUpperCase()}. Click to inspect & approve.`,
       link: '/clientdashboard'
     });
 
@@ -201,17 +202,19 @@ export const submitWork = async (req, res) => {
 };
 
 // @desc    Client approves delivery -> Release funds from Escrow to Student Wallet
-// @route   PUT /api/orders/:id/approve
+// @route   PUT /api/orders/:id/approve or /:orderId/approve
 // @access  Private (Buyer only)
 export const approveAndReleaseEscrow = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const targetId = req.params.id || req.params.orderId;
+    const order = await Order.findById(targetId);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    if (order.buyer.toString() !== req.user._id.toString()) {
+    const buyerId = order.buyer?._id ? order.buyer._id.toString() : order.buyer?.toString();
+    if (buyerId !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: Only the client can approve this order'
@@ -229,20 +232,34 @@ export const approveAndReleaseEscrow = async (req, res) => {
     order.escrowStatus = 'released_to_seller';
     await order.save();
 
-    await User.findByIdAndUpdate(order.seller, {
+    const sellerId = order.seller?._id || order.seller;
+
+    // Release Escrow to Student Wallet
+    await User.findByIdAndUpdate(sellerId, {
       $inc: {
-        pendingEscrowBalance: -order.price,
-        walletBalance: order.price
+        pendingEscrowBalance: -Number(order.price || 0),
+        walletBalance: Number(order.price || 0)
       }
     });
 
+    // 1. Notification to Student (Money received)
     await createNotification({
-      recipient: order.seller,
+      recipient: sellerId,
       sender: req.user._id,
       type: 'order_completed',
       title: 'Payment Released! 💰',
-      message: `Client approved your deliverable! $${order.price.toFixed(2)} has been released from Escrow to your student wallet.`,
+      message: `Client approved your deliverable! $${Number(order.price).toFixed(2)} has been released to your student wallet.`,
       link: '/stddashboard'
+    });
+
+    // 2. Notification to Client (Order complete)
+    await createNotification({
+      recipient: req.user._id,
+      sender: req.user._id,
+      type: 'order_completed',
+      title: 'Escrow Released Successfully ✅',
+      message: `You approved ORD-${order._id.toString().slice(-4).toUpperCase()} and released $${Number(order.price).toFixed(2)} to the student.`,
+      link: '/clientdashboard'
     });
 
     res.status(200).json({
@@ -260,26 +277,25 @@ export const approveAndReleaseEscrow = async (req, res) => {
 // @access  Private (Buyer or Seller)
 export const cancelOrder = async (req, res) => {
   try {
+    const targetId = req.params.id || req.params.orderId;
     const { reason } = req.body;
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(targetId);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
     const currentUserId = req.user._id.toString();
-    const buyerId = order.buyer.toString();
-    const sellerId = order.seller.toString();
+    const buyerId = (order.buyer?._id || order.buyer).toString();
+    const sellerId = (order.seller?._id || order.seller).toString();
 
-    // 1. Authorization check: Only buyer or seller involved can cancel
     if (currentUserId !== buyerId && currentUserId !== sellerId) {
       return res.status(403).json({
         success: false,
-        message: 'Unauthorized: Only the buyer or seller of this order can initiate cancellation'
+        message: 'Unauthorized: Only the buyer or seller can initiate cancellation'
       });
     }
 
-    // 2. State validation: Cannot cancel completed or already cancelled orders
     if (order.status === 'completed') {
       return res.status(400).json({
         success: false,
@@ -294,20 +310,18 @@ export const cancelOrder = async (req, res) => {
       });
     }
 
-    // 3. Update order status
     order.status = 'cancelled';
     order.escrowStatus = 'refunded_to_buyer';
     order.cancellationReason = reason || 'Order cancelled by user';
     order.cancelledBy = req.user._id;
     await order.save();
 
-    // 4. Reverse Escrow: Deduct from seller's pending escrow & refund buyer's wallet
     await User.findByIdAndUpdate(sellerId, {
-      $inc: { pendingEscrowBalance: -order.price }
+      $inc: { pendingEscrowBalance: -Number(order.price || 0) }
     });
 
     await User.findByIdAndUpdate(buyerId, {
-      $inc: { walletBalance: order.price }
+      $inc: { walletBalance: Number(order.price || 0) }
     });
 
     const otherPartyId = currentUserId === buyerId ? sellerId : buyerId;
@@ -337,22 +351,22 @@ export const cancelOrder = async (req, res) => {
 // @access  Private (Buyer only)
 export const requestRevision = async (req, res) => {
   try {
+    const targetId = req.params.id || req.params.orderId;
     const { revisionNotes } = req.body;
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(targetId);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // 1. Authorization: Only the buyer can request a revision
-    if (order.buyer.toString() !== req.user._id.toString()) {
+    const buyerId = (order.buyer?._id || order.buyer).toString();
+    if (buyerId !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: Only the buyer can request a revision'
       });
     }
 
-    // 2. State Validation: Can only request revision if order is 'delivered'
     if (order.status !== 'delivered') {
       return res.status(400).json({
         success: false,
@@ -367,14 +381,14 @@ export const requestRevision = async (req, res) => {
       });
     }
 
-    // 3. Update order state back to in_progress
     order.status = 'in_progress';
     order.revisionNotes = revisionNotes;
     order.revisionRequestedAt = new Date();
     await order.save();
 
+    const sellerId = order.seller?._id || order.seller;
     await createNotification({
-      recipient: order.seller,
+      recipient: sellerId,
       sender: req.user._id,
       type: 'system',
       title: 'Revision Requested 📝',
@@ -392,27 +406,27 @@ export const requestRevision = async (req, res) => {
   }
 };
 
-// @desc    Buyer leaves a review & rating for a completed order
-// @route   POST /api/orders/:id/review
+// @desc    Buyer leaves a review & rating for a completed order (Client -> Student)
+// @route   POST /api/orders/:id/review or /:orderId/review
 // @access  Private (Buyer only)
 export const addOrderReview = async (req, res) => {
   try {
+    const targetId = req.params.id || req.params.orderId;
     const { rating, comment } = req.body;
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(targetId);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // 1. Authorization: Only buyer can leave a review
-    if (order.buyer.toString() !== req.user._id.toString()) {
+    const buyerId = (order.buyer?._id || order.buyer).toString();
+    if (buyerId !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: Only the buyer can review this order'
       });
     }
 
-    // 2. Validation: Must be completed
     if (order.status !== 'completed') {
       return res.status(400).json({
         success: false,
@@ -420,7 +434,6 @@ export const addOrderReview = async (req, res) => {
       });
     }
 
-    // 3. Validation: Prevent duplicate reviews
     if (order.review && order.review.rating) {
       return res.status(400).json({
         success: false,
@@ -428,48 +441,66 @@ export const addOrderReview = async (req, res) => {
       });
     }
 
-    if (!rating || rating < 1 || rating > 5) {
+    const ratingNum = Number(rating);
+    if (!ratingNum || ratingNum < 1 || ratingNum > 5) {
       return res.status(400).json({
         success: false,
         message: 'Please provide a valid rating between 1 and 5'
       });
     }
 
-    // 4. Attach review to order
     order.review = {
-      rating: Number(rating),
+      rating: ratingNum,
       comment: comment || '',
+      reviewer: req.user.name || 'Client',
       createdAt: new Date()
     };
     await order.save();
 
-    // 5. Update Gig's average rating if gig exists
-    const gig = await Gig.findById(order.gig);
-    if (gig) {
-      const allGigOrders = await Order.find({
-        gig: gig._id,
-        'review.rating': { $exists: true }
-      });
-
-      const totalRating = allGigOrders.reduce((acc, item) => acc + item.review.rating, 0);
-      gig.rating = Number((totalRating / allGigOrders.length).toFixed(1));
-      gig.reviewCount = allGigOrders.length;
-      await gig.save();
+    // 1. Update Gig Rating if gig exists
+    if (order.gig) {
+      const gig = await Gig.findById(order.gig);
+      if (gig) {
+        const allGigOrders = await Order.find({
+          gig: gig._id,
+          'review.rating': { $exists: true }
+        });
+        const totalRating = allGigOrders.reduce((acc, item) => acc + item.review.rating, 0);
+        gig.rating = Number((totalRating / allGigOrders.length).toFixed(1));
+        gig.reviewCount = allGigOrders.length;
+        await gig.save();
+      }
     }
 
+    // 2. Update Student User Rating
+    const sellerId = order.seller?._id || order.seller;
+    const allStudentOrders = await Order.find({
+      seller: sellerId,
+      'review.rating': { $exists: true }
+    });
+    const totalStudentRating = allStudentOrders.reduce((acc, item) => acc + item.review.rating, 0);
+    const avgStudentRating = Number((totalStudentRating / allStudentOrders.length).toFixed(1));
+
+    await User.findByIdAndUpdate(sellerId, {
+      rating: avgStudentRating,
+      reviewCount: allStudentOrders.length
+    });
+
+    // 3. Notification to Student
     await createNotification({
-      recipient: order.seller,
+      recipient: sellerId,
       sender: req.user._id,
       type: 'review',
       title: 'New Review & Rating Received! ⭐',
-      message: `${req.user.name || 'Client'} gave you a ${rating}-star review for completed order ORD-${order._id.toString().slice(-4).toUpperCase()}.`,
-      link: `/student/${order.seller.toString()}`
+      message: `${req.user.name || 'Client'} gave you a ${ratingNum}-star review for completed order ORD-${order._id.toString().slice(-4).toUpperCase()}.`,
+      link: '/stddashboard'
     });
 
     res.status(200).json({
       success: true,
       message: 'Review and rating submitted successfully',
-      review: order.review
+      review: order.review,
+      order
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -496,9 +527,9 @@ export const getStudentReviews = async (req, res) => {
       reviewer: ord.buyer?.name || 'Verified Client',
       avatar: ord.buyer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${ord.buyer?.name || 'Client'}`,
       university: ord.buyer?.university || 'Campus Buyer',
-      rating: ord.review.rating,
-      comment: ord.review.comment,
-      date: new Date(ord.review.createdAt).toLocaleDateString(),
+      rating: ord.review?.rating || 5,
+      comment: ord.review?.comment || '',
+      date: new Date(ord.review?.createdAt || ord.updatedAt).toLocaleDateString(),
       gigTitle: ord.gig?.title || 'Campus Gig Service'
     }));
 
@@ -513,19 +544,20 @@ export const getStudentReviews = async (req, res) => {
 };
 
 // @desc    Student leaves a review & rating for the Client
-// @route   POST /api/orders/:id/review-client
+// @route   POST /api/orders/:id/review-client or /:orderId/review-client
 // @access  Private (Seller only)
 export const addClientReview = async (req, res) => {
   try {
+    const targetId = req.params.id || req.params.orderId;
     const { rating, comment } = req.body;
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(targetId);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // 1. Authorization: Review එක දැමිය හැක්කේ අදාළ Student ට පමණි
-    if (order.seller.toString() !== req.user._id.toString()) {
+    const sellerId = (order.seller?._id || order.seller).toString();
+    if (sellerId !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Unauthorized: Only the assigned student can review the client'
@@ -546,24 +578,27 @@ export const addClientReview = async (req, res) => {
       });
     }
 
-    if (!rating || rating < 1 || rating > 5) {
+    const ratingNum = Number(rating);
+    if (!ratingNum || ratingNum < 1 || ratingNum > 5) {
       return res.status(400).json({
         success: false,
         message: 'Please provide a valid rating between 1 and 5'
       });
     }
 
-    // 2. Save review in Order
     order.sellerReview = {
-      rating: Number(rating),
+      rating: ratingNum,
       comment: comment || '',
+      reviewer: req.user.name || 'Student',
       createdAt: new Date()
     };
     await order.save();
 
-    // 3. Client ගේ සාමාන්‍ය Rating අගය නැවත ගණනය කර User collection එක update කිරීම
+    const buyerId = order.buyer?._id || order.buyer;
+
+    // Recalculate average Client Rating
     const allClientOrders = await Order.find({
-      buyer: order.buyer,
+      buyer: buyerId,
       'sellerReview.rating': { $exists: true }
     });
 
@@ -573,18 +608,17 @@ export const addClientReview = async (req, res) => {
     );
     const avgClientRating = Number((totalRating / allClientOrders.length).toFixed(1));
 
-    await User.findByIdAndUpdate(order.buyer, {
+    await User.findByIdAndUpdate(buyerId, {
       rating: avgClientRating,
       reviewCount: allClientOrders.length
     });
 
-    // 4. Notification යැවීම
     await createNotification({
-      recipient: order.buyer,
+      recipient: buyerId,
       sender: req.user._id,
       type: 'review',
       title: 'New Student Feedback Received! ⭐',
-      message: `${req.user.name || 'Student'} rated your collaboration ${rating} stars for ORD-${order._id.toString().slice(-4).toUpperCase()}.`,
+      message: `${req.user.name || 'Student'} rated your collaboration ${ratingNum} stars for ORD-${order._id.toString().slice(-4).toUpperCase()}.`,
       link: '/clientdashboard'
     });
 
@@ -616,13 +650,13 @@ export const getClientReviews = async (req, res) => {
 
     const reviews = ordersWithReviews.map((ord) => ({
       id: ord._id,
-      reviewer: ord.seller?.name || 'Verified Student',
+      reviewer: ord.seller?.name || ord.sellerReview?.reviewer || 'Verified Student',
       avatar: ord.seller?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${ord.seller?.name || 'Student'}`,
       university: ord.seller?.university || 'Campus Student',
-      rating: ord.sellerReview.rating,
-      comment: ord.sellerReview.comment,
-      date: new Date(ord.sellerReview.createdAt).toLocaleDateString(),
-      gigTitle: ord.gig?.title || 'Campus Gig Service'
+      rating: ord.sellerReview?.rating || 5,
+      comment: ord.sellerReview?.comment || '',
+      date: new Date(ord.sellerReview?.createdAt || ord.updatedAt).toLocaleDateString(),
+      gigTitle: ord.gig?.title || ord.requirements?.split('\n')[0] || 'Campus Task'
     }));
 
     res.status(200).json({
@@ -634,3 +668,8 @@ export const getClientReviews = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Compatibility Aliases so all routes continue to work seamlessly
+export const reviewStudent = addOrderReview;
+export const reviewClient = addClientReview;
+export const approveOrder = approveAndReleaseEscrow;

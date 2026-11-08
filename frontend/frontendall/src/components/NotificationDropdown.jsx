@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   CheckCheck,
@@ -9,7 +9,8 @@ import {
   Sparkles,
   FileCheck2,
   Clock,
-  Loader2
+  Loader2,
+  Wallet
 } from 'lucide-react';
 import API from '../api/axios';
 
@@ -34,14 +35,21 @@ export default function NotificationDropdown() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
- 
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await API.get('/notifications');
       if (res.data?.success) {
-        setNotifications(res.data.notifications || []);
-        setUnreadCount(res.data.unreadCount || 0);
+        const list = res.data.notifications || res.data.data || [];
+        setNotifications(list);
+
+        const unread =
+          res.data.unreadCount !== undefined
+            ? res.data.unreadCount
+            : list.filter((n) => !(n.read || n.isRead)).length;
+
+        setUnreadCount(unread);
       }
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
@@ -50,7 +58,7 @@ export default function NotificationDropdown() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 25000);
+    const interval = setInterval(fetchNotifications, 15000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
@@ -69,7 +77,9 @@ export default function NotificationDropdown() {
       try {
         await API.put(`/notifications/${id}/read`);
         setNotifications((prev) =>
-          prev.map((n) => (n._id === id ? { ...n, isRead: true } : n))
+          prev.map((n) =>
+            n._id === id ? { ...n, read: true, isRead: true } : n
+          )
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
       } catch (err) {
@@ -81,22 +91,58 @@ export default function NotificationDropdown() {
   const handleMarkAllRead = async () => {
     try {
       await API.put('/notifications/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setNotifications((prev) =>
+        prev.map((n) => ({ ...n, read: true, isRead: true }))
+      );
       setUnreadCount(0);
     } catch (err) {
       console.error('Error marking all as read:', err);
     }
   };
 
+  const handleNotificationClick = (item) => {
+    const isAlreadyRead = item.read !== undefined ? item.read : item.isRead;
+    if (!isAlreadyRead) {
+      handleMarkAsRead(item._id, false);
+    }
+    setIsOpen(false);
+
+    let targetUrl = item.link;
+    if (!targetUrl || targetUrl === '#') {
+      if (item.type === 'message') {
+        targetUrl = '/messages';
+      } else {
+        try {
+          const stored = localStorage.getItem('user');
+          const user = stored ? JSON.parse(stored) : null;
+          targetUrl =
+            user?.role === 'client' ? '/clientdashboard' : '/stddashboard';
+        } catch {
+          targetUrl = '/clientdashboard';
+        }
+      }
+    }
+
+    navigate(targetUrl);
+  };
+
   const getIcon = (type) => {
     switch (type) {
       case 'new_bid':
-      case 'order_placed':
+      case 'bid':
         return <Briefcase className="w-4 h-4 text-blue-600" />;
+      case 'job':
+        return <Briefcase className="w-4 h-4 text-indigo-600" />;
+      case 'order_placed':
+      case 'order':
+        return <Briefcase className="w-4 h-4 text-emerald-600" />;
       case 'order_delivered':
         return <FileCheck2 className="w-4 h-4 text-amber-500" />;
       case 'order_completed':
+      case 'payment':
         return <DollarSign className="w-4 h-4 text-[#007a4d]" />;
+      case 'wallet':
+        return <Wallet className="w-4 h-4 text-[#007a4d]" />;
       case 'message':
         return <MessageSquare className="w-4 h-4 text-emerald-600" />;
       case 'review':
@@ -136,7 +182,9 @@ export default function NotificationDropdown() {
         <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl border border-gray-100 shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 font-sans">
           <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900">Notifications</h3>
+              <h3 className="text-xs sm:text-sm font-bold text-gray-900">
+                Notifications
+              </h3>
               {unreadCount > 0 && (
                 <span className="text-[10px] font-bold text-[#007a4d] bg-[#eaf8f1] px-2 py-0.5 rounded-full border border-emerald-100">
                   {unreadCount} new
@@ -159,43 +207,45 @@ export default function NotificationDropdown() {
           {/* List */}
           <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-50 p-1.5 space-y-1">
             {notifications.length > 0 ? (
-              notifications.map((item) => (
-                <Link
-                  key={item._id}
-                  to={item.link || '#'}
-                  onClick={() => {
-                    handleMarkAsRead(item._id, item.isRead);
-                    setIsOpen(false);
-                  }}
-                  className={`p-3 sm:p-3.5 rounded-2xl transition-all flex items-start gap-3 text-left block ${
-                    !item.isRead
-                      ? 'bg-[#eaf8f1]/50 hover:bg-[#eaf8f1]/80'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
-                    {getIcon(item.type)}
-                  </div>
+              notifications.map((item) => {
+                const isItemRead =
+                  item.read !== undefined ? item.read : item.isRead;
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1 mb-0.5">
-                      <h4 className="text-xs font-bold text-gray-900 truncate">
-                        {item.title}
-                      </h4>
-                      {!item.isRead && (
-                        <span className="w-2 h-2 rounded-full bg-[#007a4d] shrink-0" />
-                      )}
+                return (
+                  <button
+                    key={item._id}
+                    type="button"
+                    onClick={() => handleNotificationClick(item)}
+                    className={`w-full p-3 sm:p-3.5 rounded-2xl transition-all flex items-start gap-3 text-left cursor-pointer border ${
+                      !isItemRead
+                        ? 'bg-[#eaf8f1]/50 hover:bg-[#eaf8f1]/80 border-emerald-100/60'
+                        : 'hover:bg-gray-50 border-transparent'
+                    }`}
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
+                      {getIcon(item.type)}
                     </div>
-                    <p className="text-[11px] text-gray-600 line-clamp-2 leading-relaxed">
-                      {item.message}
-                    </p>
-                    <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1.5 font-medium">
-                      <Clock className="w-3 h-3 text-gray-400" />
-                      <span>{formatTimeAgo(item.createdAt)}</span>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <h4 className="text-xs font-bold text-gray-900 truncate">
+                          {item.title}
+                        </h4>
+                        {!isItemRead && (
+                          <span className="w-2 h-2 rounded-full bg-[#007a4d] shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-600 line-clamp-2 leading-relaxed">
+                        {item.message}
+                      </p>
+                      <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1.5 font-medium">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        <span>{formatTimeAgo(item.createdAt)}</span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))
+                  </button>
+                );
+              })
             ) : (
               <div className="py-10 text-center text-xs text-gray-400">
                 No notifications right now.
