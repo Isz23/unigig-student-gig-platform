@@ -236,7 +236,6 @@ export const approveAndReleaseEscrow = async (req, res) => {
       }
     });
 
-
     await createNotification({
       recipient: order.seller,
       sender: req.user._id,
@@ -457,10 +456,11 @@ export const addOrderReview = async (req, res) => {
       gig.reviewCount = allGigOrders.length;
       await gig.save();
     }
+
     await createNotification({
       recipient: order.seller,
       sender: req.user._id,
-      type: 'system',
+      type: 'review',
       title: 'New Review & Rating Received! ⭐',
       message: `${req.user.name || 'Client'} gave you a ${rating}-star review for completed order ORD-${order._id.toString().slice(-4).toUpperCase()}.`,
       link: `/student/${order.seller.toString()}`
@@ -470,6 +470,165 @@ export const addOrderReview = async (req, res) => {
       success: true,
       message: 'Review and rating submitted successfully',
       review: order.review
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get all reviews received by a student
+// @route   GET /api/orders/reviews/student/:studentId
+// @access  Public
+export const getStudentReviews = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const ordersWithReviews = await Order.find({
+      seller: studentId,
+      'review.rating': { $exists: true }
+    })
+      .populate('buyer', 'name avatar university')
+      .populate('gig', 'title')
+      .sort({ 'review.createdAt': -1 });
+
+    const reviews = ordersWithReviews.map((ord) => ({
+      id: ord._id,
+      reviewer: ord.buyer?.name || 'Verified Client',
+      avatar: ord.buyer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${ord.buyer?.name || 'Client'}`,
+      university: ord.buyer?.university || 'Campus Buyer',
+      rating: ord.review.rating,
+      comment: ord.review.comment,
+      date: new Date(ord.review.createdAt).toLocaleDateString(),
+      gigTitle: ord.gig?.title || 'Campus Gig Service'
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: reviews.length,
+      data: reviews
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Student leaves a review & rating for the Client
+// @route   POST /api/orders/:id/review-client
+// @access  Private (Seller only)
+export const addClientReview = async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // 1. Authorization: Review එක දැමිය හැක්කේ අදාළ Student ට පමණි
+    if (order.seller.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only the assigned student can review the client'
+      });
+    }
+
+    if (order.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'You can only review the client after order completion and payment release'
+      });
+    }
+
+    if (order.sellerReview && order.sellerReview.rating) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already reviewed this client for this order'
+      });
+    }
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid rating between 1 and 5'
+      });
+    }
+
+    // 2. Save review in Order
+    order.sellerReview = {
+      rating: Number(rating),
+      comment: comment || '',
+      createdAt: new Date()
+    };
+    await order.save();
+
+    // 3. Client ගේ සාමාන්‍ය Rating අගය නැවත ගණනය කර User collection එක update කිරීම
+    const allClientOrders = await Order.find({
+      buyer: order.buyer,
+      'sellerReview.rating': { $exists: true }
+    });
+
+    const totalRating = allClientOrders.reduce(
+      (acc, item) => acc + item.sellerReview.rating,
+      0
+    );
+    const avgClientRating = Number((totalRating / allClientOrders.length).toFixed(1));
+
+    await User.findByIdAndUpdate(order.buyer, {
+      rating: avgClientRating,
+      reviewCount: allClientOrders.length
+    });
+
+    // 4. Notification යැවීම
+    await createNotification({
+      recipient: order.buyer,
+      sender: req.user._id,
+      type: 'review',
+      title: 'New Student Feedback Received! ⭐',
+      message: `${req.user.name || 'Student'} rated your collaboration ${rating} stars for ORD-${order._id.toString().slice(-4).toUpperCase()}.`,
+      link: '/clientdashboard'
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Client review and rating submitted successfully',
+      sellerReview: order.sellerReview,
+      clientRating: avgClientRating
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get all reviews received by a client from students
+// @route   GET /api/orders/reviews/client/:clientId
+// @access  Public
+export const getClientReviews = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    const ordersWithReviews = await Order.find({
+      buyer: clientId,
+      'sellerReview.rating': { $exists: true }
+    })
+      .populate('seller', 'name avatar university studentRegNumber')
+      .populate('gig', 'title')
+      .sort({ 'sellerReview.createdAt': -1 });
+
+    const reviews = ordersWithReviews.map((ord) => ({
+      id: ord._id,
+      reviewer: ord.seller?.name || 'Verified Student',
+      avatar: ord.seller?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${ord.seller?.name || 'Student'}`,
+      university: ord.seller?.university || 'Campus Student',
+      rating: ord.sellerReview.rating,
+      comment: ord.sellerReview.comment,
+      date: new Date(ord.sellerReview.createdAt).toLocaleDateString(),
+      gigTitle: ord.gig?.title || 'Campus Gig Service'
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: reviews.length,
+      data: reviews
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

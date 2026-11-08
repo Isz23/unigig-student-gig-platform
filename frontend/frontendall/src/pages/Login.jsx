@@ -8,11 +8,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  
-  // Loading සහ Error states
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -29,7 +28,6 @@ export default function Login() {
 
       const { token, user } = response.data;
 
-      // Token සහ User data LocalStorage එකේ තැන්පත් කිරීම
       if (token) {
         localStorage.setItem('token', token);
       }
@@ -37,16 +35,16 @@ export default function Login() {
         localStorage.setItem('user', JSON.stringify(user));
       }
 
-      // User Role එක අනුව Dashboard එකට Redirect කිරීම
+      // ✅ Redirects role එක අනුව නිවැරදි කර ඇත
       if (user?.role === 'client') {
-        navigate('/client/dashboard'); // Client Dashboard route එක
+        navigate('/clientdashboard'); // Client Dashboard route එක
       } else {
         navigate('/stddashboard'); // Student Dashboard route එක
       }
 
     } catch (error) {
       console.error('Login error:', error);
-      // Backend එකෙන් එවන error message එක පෙන්වීම
+
       setErrorMessage(
         error.response?.data?.message || 'Invalid email or password. Please try again.'
       );
