@@ -12,7 +12,6 @@ const orderSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
-   
     gig: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Gig',
@@ -57,9 +56,14 @@ const orderSchema = new mongoose.Schema(
       submittedAt: Date
     },
     review: {
-      rating: Number,
-      comment: String,
-      createdAt: Date
+      rating: { type: Number, min: 1, max: 5 },
+      comment: { type: String, default: '' },
+      createdAt: { type: Date }
+    },
+    sellerReview: {
+      rating: { type: Number, min: 1, max: 5 },
+      comment: { type: String, default: '' },
+      createdAt: { type: Date }
     }
   },
   {

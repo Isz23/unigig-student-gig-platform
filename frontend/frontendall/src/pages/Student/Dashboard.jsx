@@ -42,11 +42,38 @@ export default function Dashboard() {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
+  // Dynamic reviews states
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+
+  // Deliver Work Modal states
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
   const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState(null);
   const [deliveryWorkUrl, setDeliveryWorkUrl] = useState('');
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [submittingDelivery, setSubmittingDelivery] = useState(false);
+
+  // Student Rates Client Modal states
+  const [ratingOrderForClient, setRatingOrderForClient] = useState(null);
+  const [clientRating, setClientRating] = useState(5);
+  const [clientReviewComment, setClientReviewComment] = useState('');
+  const [submittingClientReview, setSubmittingClientReview] = useState(false);
+
+  const fetchReviews = async (sellerId) => {
+    try {
+      setLoadingReviews(true);
+      const targetId = sellerId || user?._id || user?.id;
+      if (!targetId) return;
+      const res = await API.get(`/orders/reviews/student/${targetId}`);
+      if (res.data?.success) {
+        setReviews(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -55,6 +82,7 @@ export default function Dashboard() {
         if (res.data?.user) {
           setUser(res.data.user);
           localStorage.setItem('user', JSON.stringify(res.data.user));
+          fetchReviews(res.data.user._id);
         }
       } catch (err) {
         if (err.response?.status === 401) {
@@ -92,6 +120,10 @@ export default function Dashboard() {
     fetchUserProfile();
     fetchMyGigs();
     fetchSellerOrders();
+
+    if (user?._id || user?.id) {
+      fetchReviews(user._id || user.id);
+    }
   }, [navigate]);
 
   const handleDeleteGig = async (gigId) => {
@@ -158,6 +190,38 @@ export default function Dashboard() {
     }
   };
 
+  // Submit Feedback / Review for Client
+  const handleSubmitClientReview = async (e) => {
+    e.preventDefault();
+    if (!ratingOrderForClient) return;
+
+    try {
+      setSubmittingClientReview(true);
+      const orderId = ratingOrderForClient._id || ratingOrderForClient.id;
+      const res = await API.post(`/orders/${orderId}/review-client`, {
+        rating: Number(clientRating),
+        comment: clientReviewComment.trim()
+      });
+
+      if (res.data?.success) {
+        alert('🎉 Thank you! Your feedback for the client has been posted successfully.');
+        setOrders((prev) =>
+          prev.map((ord) =>
+            (ord._id || ord.id) === orderId
+              ? { ...ord, sellerReview: res.data.sellerReview }
+              : ord
+          )
+        );
+        setRatingOrderForClient(null);
+        setClientReviewComment('');
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit review for client.');
+    } finally {
+      setSubmittingClientReview(false);
+    }
+  };
+
   const activeOrdersCount = orders.filter(
     (o) => o.status === 'in_progress' || o.status === 'delivered'
   ).length;
@@ -166,28 +230,14 @@ export default function Dashboard() {
     .filter((o) => o.escrowStatus === 'held_in_escrow' && o.status !== 'cancelled')
     .reduce((sum, o) => sum + (o.price || 0), 0);
 
-  const reviews = [
-    {
-      id: 1,
-      reviewer: 'Kavindu Perera',
-      university: 'University of Moratuwa',
-      rating: 5,
-      date: '2 days ago',
-      gigTitle: 'Responsive React & Tailwind Web App Development',
-      comment: 'Super fast delivery and clean React code! The UI was responsive across mobile screens.',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=120&auto=format&fit=crop'
-    },
-    {
-      id: 2,
-      reviewer: 'Sanduni Fernando',
-      university: 'University of Peradeniya',
-      rating: 5,
-      date: '1 week ago',
-      gigTitle: 'Computer Networks & Subnetting Problem Tutoring',
-      comment: 'Explained VLSM subnetting calculations very clearly in a 40-minute session.',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop'
-    }
-  ];
+  // Dynamic Average Rating Calculation
+  const averageRating =
+    reviews.length > 0
+      ? (
+          reviews.reduce((acc, rev) => acc + (Number(rev.rating) || 5), 0) /
+          reviews.length
+        ).toFixed(1)
+      : '5.0';
 
   return (
     <div className="min-h-screen bg-gray-50/60 py-8 px-4 sm:px-6 lg:px-8 font-sans">
@@ -301,11 +351,11 @@ export default function Dashboard() {
             <div>
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Student Rating</p>
               <h3 className="text-2xl font-black text-gray-900 mt-1 flex items-center gap-1.5">
-                5.0
+                {averageRating}
                 <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
               </h3>
               <span className="text-[11px] text-[#007a4d] font-semibold mt-1 block hover:underline">
-                View all reviews →
+                {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'} →
               </span>
             </div>
             <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -400,7 +450,7 @@ export default function Dashboard() {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2.5 self-end sm:self-center">
+                        <div className="flex items-center gap-2.5 self-end sm:self-center flex-wrap">
                           <span className="text-sm font-black text-[#007a4d] mr-1">${ord.price?.toFixed(2)}</span>
 
                           {/* Message / Chat Button */}
@@ -430,10 +480,28 @@ export default function Dashboard() {
                             </span>
                           )}
 
+                          {/* Rate Client / Completed display */}
                           {ord.status === 'completed' && (
-                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100">
-                              Completed & Paid
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100">
+                                Paid
+                              </span>
+                              {ord.sellerReview?.rating ? (
+                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded-xl border border-amber-200 flex items-center gap-1">
+                                  <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                  <span>{ord.sellerReview.rating}.0 Rated</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setRatingOrderForClient(ord)}
+                                  className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
+                                >
+                                  <Star className="w-3 h-3 fill-white" />
+                                  <span>Rate Client</span>
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -610,7 +678,7 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td className="py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center justify-end gap-2 flex-wrap">
                               {/* Chat Link in Table */}
                               <Link
                                 to={`/messages?peerId=${buyerId}`}
@@ -620,7 +688,7 @@ export default function Dashboard() {
                                 <MessageSquare className="w-3.5 h-3.5" />
                               </Link>
 
-                              {ord.status === 'in_progress' ? (
+                              {ord.status === 'in_progress' && (
                                 <button
                                   type="button"
                                   onClick={() => handleOpenDeliveryModal(ord)}
@@ -628,11 +696,34 @@ export default function Dashboard() {
                                 >
                                   Deliver Work
                                 </button>
-                              ) : ord.status === 'delivered' ? (
+                              )}
+
+                              {ord.status === 'delivered' && (
                                 <span className="text-[11px] text-blue-600 font-semibold">Under Client Review</span>
-                              ) : ord.status === 'completed' ? (
-                                <span className="text-[11px] text-emerald-600 font-semibold">Payment Received</span>
-                              ) : (
+                              )}
+
+                              {ord.status === 'completed' && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] text-emerald-600 font-semibold">Paid</span>
+                                  {ord.sellerReview?.rating ? (
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 flex items-center gap-1">
+                                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                      <span>{ord.sellerReview.rating}.0</span>
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setRatingOrderForClient(ord)}
+                                      className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
+                                    >
+                                      <Star className="w-3 h-3 fill-white" />
+                                      <span>Rate</span>
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
+                              {ord.status !== 'in_progress' && ord.status !== 'delivered' && ord.status !== 'completed' && (
                                 <span className="text-[11px] text-gray-400">Closed</span>
                               )}
                             </div>
@@ -647,7 +738,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tab 4: Reviews */}
+        {/* Tab 4: Reviews (Dynamic Data) */}
         {activeTab === 'reviews' && (
           <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4">
@@ -655,7 +746,7 @@ export default function Dashboard() {
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <span>Client & Peer Feedback</span>
                   <span className="text-xs bg-[#eaf8f1] text-[#007a4d] border border-emerald-100 px-2.5 py-0.5 rounded-full font-bold">
-                    100% Positive
+                    100% Campus Verified
                   </span>
                 </h3>
                 <p className="text-xs text-gray-500 mt-1">
@@ -666,7 +757,7 @@ export default function Dashboard() {
               <div className="flex items-center gap-3 bg-gray-50 px-4 py-2.5 rounded-2xl border border-gray-200/70">
                 <div className="flex items-center gap-1">
                   <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-                  <span className="text-xl font-extrabold text-gray-900">5.0</span>
+                  <span className="text-xl font-extrabold text-gray-900">{averageRating}</span>
                 </div>
                 <div className="h-7 w-px bg-gray-200"></div>
                 <div className="text-left text-xs">
@@ -676,51 +767,74 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              {reviews.map((rev) => (
-                <div 
-                  key={rev.id} 
-                  className="p-5 rounded-2xl bg-gray-50/60 border border-gray-100 hover:border-gray-200 transition-all space-y-3"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <img 
-                        src={rev.avatar} 
-                        alt={rev.reviewer} 
-                        className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/20"
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-gray-900">{rev.reviewer}</h4>
-                          <span className="text-[10px] text-[#007a4d] bg-[#eaf8f1] border border-emerald-100 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <UserCheck className="w-3.5 h-3.5" /> Verified Order
-                          </span>
+            {loadingReviews ? (
+              <div className="py-16 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-[#007a4d]" />
+                <p className="text-xs text-gray-400">Loading student reviews...</p>
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="py-16 text-center space-y-2 bg-gray-50/50 rounded-2xl border border-gray-100">
+                <p className="text-sm font-bold text-gray-700">No client reviews yet</p>
+                <p className="text-xs text-gray-400">
+                  When clients approve your deliverables and leave a review, it will be listed here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviews.map((rev) => (
+                  <div 
+                    key={rev.id || rev._id} 
+                    className="p-5 rounded-2xl bg-gray-50/60 border border-gray-100 hover:border-gray-200 transition-all space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={rev.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${rev.reviewer || 'Client'}`} 
+                          alt={rev.reviewer} 
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/20"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-gray-900">{rev.reviewer}</h4>
+                            <span className="text-[10px] text-[#007a4d] bg-[#eaf8f1] border border-emerald-100 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <UserCheck className="w-3.5 h-3.5" /> Verified Order
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500">{rev.university || 'Campus Buyer'}</p>
                         </div>
-                        <p className="text-xs text-gray-500">{rev.university}</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 sm:self-center">
+                        <div className="flex items-center gap-0.5 text-amber-400">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3.5 h-3.5 ${
+                                i < Number(rev.rating)
+                                  ? 'fill-amber-400 text-amber-400'
+                                  : 'text-gray-200'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-bold text-gray-800 ml-1">{rev.rating}.0</span>
+                        <span className="text-xs text-gray-400">{rev.date}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 sm:self-center">
-                      <div className="flex items-center gap-0.5 text-amber-400">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
-                        ))}
+                    {rev.gigTitle && (
+                      <div className="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-xl border border-gray-100 inline-block font-medium">
+                        Order for: <span className="font-bold text-gray-800">{rev.gigTitle}</span>
                       </div>
-                      <span className="text-xs font-bold text-gray-800 ml-1">{rev.rating}</span>
-                      <span className="text-xs text-gray-400">{rev.date}</span>
-                    </div>
-                  </div>
+                    )}
 
-                  <div className="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-xl border border-gray-100 inline-block font-medium">
-                    Order for: <span className="font-bold text-gray-800">{rev.gigTitle}</span>
+                    <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                      "{rev.comment}"
+                    </p>
                   </div>
-
-                  <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                    "{rev.comment}"
-                  </p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -821,6 +935,85 @@ export default function Dashboard() {
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* Student Rates Client Modal */}
+      {ratingOrderForClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4 relative">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div>
+                <span className="text-[10px] font-bold text-[#007a4d] uppercase tracking-wider bg-[#eaf8f1] px-2 py-0.5 rounded-full border border-emerald-100">
+                  Rate Campus Buyer
+                </span>
+                <h3 className="text-base font-bold text-gray-900 mt-1">
+                  Rate {ratingOrderForClient.buyer?.name || 'Client'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRatingOrderForClient(null)}
+                className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitClientReview} className="space-y-4">
+              <div className="flex items-center justify-center gap-2 py-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    type="button"
+                    key={star}
+                    onClick={() => setClientRating(star)}
+                    className="p-1 cursor-pointer transition-transform hover:scale-110"
+                  >
+                    <Star
+                      className={`w-7 h-7 ${
+                        star <= clientRating
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-gray-300'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+
+              <textarea
+                required
+                rows={3}
+                value={clientReviewComment}
+                onChange={(e) => setClientReviewComment(e.target.value)}
+                placeholder="How was your experience working with this client? (Prompt payment, clear instructions, good communication)..."
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d] leading-relaxed"
+              />
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRatingOrderForClient(null)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingClientReview}
+                  className="px-5 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
+                >
+                  {submittingClientReview ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Posting...</span>
+                    </>
+                  ) : (
+                    <span>Submit Client Review</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

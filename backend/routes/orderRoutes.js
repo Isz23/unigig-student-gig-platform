@@ -8,7 +8,8 @@ import {
   approveAndReleaseEscrow,
   cancelOrder,
   requestRevision,
-  addOrderReview
+  addOrderReview,
+  getStudentReviews
 } from '../controllers/orderController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -18,6 +19,9 @@ router.use(protect);
 
 router.get('/my-orders', getMyOrders);
 router.get('/seller-orders', getSellerOrders);
+router.get('/reviews/student/:studentId', getStudentReviews);
+router.get('/reviews/client/:clientId', getClientReviews);
+router.post('/:id/review-client', addClientReview);
 
 router.post('/', createOrder);
 router.get('/:id', getOrderById);
