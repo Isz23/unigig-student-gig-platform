@@ -3,30 +3,47 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import connectDB from './config/db.js';
 
-// 1. Gig Routes Import කිරීම
+// Routes Import
 import gigRoutes from './routes/gigRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import jobRoutes from './routes/jobRoutes.js';
 
 dotenv.config();
 
-// Connect Database
 connectDB();
 
 const app = express();
 
+// Allowed Origins (5173, 5174 සහ .env හි ඇති URL)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS'));
+    }
+  },
   credentials: true
 }));
 
 app.use(express.json());
 
-// Default Test Route
 app.get('/', (req, res) => {
   res.send('🚀 UniGig Backend Running...');
 });
 
-// 2. Gig Module Routes Mount කිරීම
+// Routes Mount
+app.use('/api/auth', authRoutes);
 app.use('/api/gigs', gigRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/jobs', jobRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

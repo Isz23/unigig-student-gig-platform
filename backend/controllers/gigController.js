@@ -2,6 +2,7 @@ import Gig from '../models/Gig.js';
 
 // @desc    Create a new Gig
 // @route   POST /api/gigs
+// @access  Private (Student)
 export const createGig = async (req, res) => {
   try {
     const {
@@ -23,7 +24,7 @@ export const createGig = async (req, res) => {
       imageUrl: imageUrl || undefined,
       tags: Array.isArray(tags) ? tags : tags ? tags.split(',').map((t) => t.trim()) : [],
       packages,
-      seller: sellerId || null
+      seller: req.user?._id || sellerId || null
     });
 
     const savedGig = await gig.save();
@@ -42,6 +43,7 @@ export const createGig = async (req, res) => {
 
 // @desc    Get all Gigs (with Search & Category Filters)
 // @route   GET /api/gigs
+// @access  Public
 export const getGigs = async (req, res) => {
   try {
     const { category, search } = req.query;
@@ -78,8 +80,31 @@ export const getGigs = async (req, res) => {
   }
 };
 
+// @desc    Get logged in student's gigs (Seller Dashboard)
+// @route   GET /api/gigs/my-gigs
+// @access  Private (Seller/Student)
+export const getMyGigs = async (req, res) => {
+  try {
+    const gigs = await Gig.find({
+      $or: [{ seller: req.user._id }, { user: req.user._id }]
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: gigs.length,
+      data: gigs
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // @desc    Get single Gig by ID
 // @route   GET /api/gigs/:id
+// @access  Public
 export const getGigById = async (req, res) => {
   try {
     const gig = await Gig.findById(req.params.id)
@@ -106,6 +131,7 @@ export const getGigById = async (req, res) => {
 
 // @desc    Get Gigs by specific Seller (Student Profile view)
 // @route   GET /api/gigs/seller/:sellerId
+// @access  Public
 export const getGigsBySeller = async (req, res) => {
   try {
     const gigs = await Gig.find({ seller: req.params.sellerId }).sort({ createdAt: -1 });
@@ -123,8 +149,9 @@ export const getGigsBySeller = async (req, res) => {
   }
 };
 
-// @desc    Update a Gig
+// @desc    Update a Gig (Owner only)
 // @route   PUT /api/gigs/:id
+// @access  Private (Owner)
 export const updateGig = async (req, res) => {
   try {
     const gig = await Gig.findById(req.params.id);
@@ -133,6 +160,15 @@ export const updateGig = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Gig not found'
+      });
+    }
+
+    // Authorization check: Only the creator of the gig can edit it
+    const ownerId = gig.seller ? gig.seller.toString() : gig.user?.toString();
+    if (req.user && ownerId && ownerId !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only edit your own gigs'
       });
     }
 
@@ -155,8 +191,9 @@ export const updateGig = async (req, res) => {
   }
 };
 
-// @desc    Delete a Gig
+// @desc    Delete a Gig (Owner only)
 // @route   DELETE /api/gigs/:id
+// @access  Private (Owner)
 export const deleteGig = async (req, res) => {
   try {
     const gig = await Gig.findById(req.params.id);
@@ -165,6 +202,15 @@ export const deleteGig = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Gig not found'
+      });
+    }
+
+    // Authorization check: Only the creator of the gig can delete it
+    const ownerId = gig.seller ? gig.seller.toString() : gig.user?.toString();
+    if (req.user && ownerId && ownerId !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only delete your own gigs'
       });
     }
 
