@@ -18,7 +18,6 @@ export default function Messages() {
   const [searchParams] = useSearchParams();
   const queryPeerId = searchParams.get('peerId');
 
-  // LocalStorage එකෙන් Login වී ඇති User ලබා ගැනීම
   const currentUser = (() => {
     try {
       const saved = localStorage.getItem('user');
@@ -39,7 +38,6 @@ export default function Messages() {
 
   const messagesEndRef = useRef(null);
 
-  // Auto scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -48,7 +46,7 @@ export default function Messages() {
     scrollToBottom();
   }, [messages]);
 
-  // 1. Fetch Conversations List from Backend
+  // 1. Fetch Conversations from Backend
   const fetchConversations = async () => {
     try {
       setLoadingConversations(true);
@@ -72,21 +70,36 @@ export default function Messages() {
     fetchConversations();
   }, []);
 
-  // 2. PeerId query parameter එකක් තිබේ නම් අදාළ peer එක තෝරා ගැනීම
+  // 2. Query peerId dynamically loaded from backend
   useEffect(() => {
-    if (queryPeerId) {
+    const initPeer = async () => {
+      if (!queryPeerId) return;
+
       const matched = conversations.find(
-        (c) => c.user?._id === queryPeerId || c.user?.id === queryPeerId
+        (c) => (c.user?._id || c.user?.id) === queryPeerId
       );
+
       if (matched) {
         setActivePeer(matched.user);
-      } else {
+        return;
+      }
+
+      try {
+        const res = await API.get(`/auth/user/${queryPeerId}`);
+        if (res.data?.success && res.data?.user) {
+          setActivePeer(res.data.user);
+        } else {
+          setActivePeer({ _id: queryPeerId, name: 'Campus Peer', role: 'User' });
+        }
+      } catch (err) {
         setActivePeer({ _id: queryPeerId, name: 'Campus Peer', role: 'User' });
       }
-    }
+    };
+
+    initPeer();
   }, [queryPeerId, conversations]);
 
-  // 3. Fetch Chat Messages between Current User and Active Peer
+  // 3. Fetch Real Chat Messages from Backend
   const fetchMessages = async (peerId) => {
     if (!peerId) return;
     try {
@@ -107,10 +120,10 @@ export default function Messages() {
       const peerId = activePeer._id || activePeer.id;
       fetchMessages(peerId);
 
-      // Polling: තත්පර 4කට වරක් අලුත් messages පරීක්ෂා කිරීම
+      // Polling every 3.5 seconds for new incoming messages
       const interval = setInterval(() => {
         fetchMessages(peerId);
-      }, 4000);
+      }, 3500);
 
       return () => clearInterval(interval);
     }
@@ -158,7 +171,7 @@ export default function Messages() {
         <div className="flex items-center justify-between">
           <Link
             to={backLink}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Dashboard</span>
