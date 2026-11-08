@@ -123,7 +123,6 @@ export const updateUserProfile = async (req, res) => {
       user.skills = req.body.skills || user.skills;
       user.faculty = req.body.faculty || user.faculty;
 
-      // Password එක update කරනවා නම් පමණක්
       if (req.body.password) {
         user.password = req.body.password;
       }
@@ -159,7 +158,7 @@ export const updateUserProfile = async (req, res) => {
 // @route   PUT /api/auth/verify-student/:id
 export const verifyStudentStatus = async (req, res) => {
   try {
-    const { status } = req.body; // 'verified' or 'rejected'
+    const { status } = req.body;
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -180,6 +179,89 @@ export const verifyStudentStatus = async (req, res) => {
         studentRegNumber: user.studentRegNumber,
         verificationStatus: user.verificationStatus,
         isVerifiedStudent: user.isVerifiedStudent
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Deposit funds to wallet (Client Escrow Wallet)
+// @route   POST /api/auth/deposit
+// @access  Private
+export const depositFunds = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const depositAmt = Number(amount);
+
+    if (!depositAmt || depositAmt <= 0 || isNaN(depositAmt)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid deposit amount greater than 0'
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $inc: { walletBalance: depositAmt } },
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `$${depositAmt.toFixed(2)} deposited to wallet successfully!`,
+      walletBalance: user.walletBalance,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Withdraw funds from wallet (Student or Client)
+// @route   POST /api/auth/withdraw
+// @access  Private
+export const withdrawFunds = async (req, res) => {
+  try {
+    const { amount, method, accountNotes } = req.body;
+    const withdrawAmt = Number(amount);
+
+    if (!withdrawAmt || withdrawAmt <= 0 || isNaN(withdrawAmt)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid withdrawal amount greater than 0'
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if ((user.walletBalance || 0) < withdrawAmt) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient funds. Your available balance is $${Number(user.walletBalance || 0).toFixed(2)}`
+      });
+    }
+
+    user.walletBalance -= withdrawAmt;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `$${withdrawAmt.toFixed(2)} withdrawal requested successfully via ${method ? method.toUpperCase() : 'standard transfer'}!`,
+      walletBalance: user.walletBalance,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        walletBalance: user.walletBalance
       }
     });
   } catch (error) {

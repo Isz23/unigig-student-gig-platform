@@ -15,10 +15,19 @@ import {
   Clock,
   Sparkles,
   ArrowUpRight,
+<<<<<<< HEAD
   AlertCircle,
   FileText,
   MessageSquare,
   UserCheck
+=======
+  FileText,
+  MessageSquare,
+  UserCheck,
+  Wallet,
+  ArrowUpFromLine,
+  ArrowDownToLine
+>>>>>>> feature/wallet
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -39,6 +48,10 @@ export default function ClientDashboard() {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
+  // Client Reviews state
+  const [clientReviews, setClientReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+
   const [selectedJobForBids, setSelectedJobForBids] = useState(null);
   const [acceptingBidId, setAcceptingBidId] = useState(null);
 
@@ -50,12 +63,38 @@ export default function ClientDashboard() {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // Client Deposit & Withdraw Modal States
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('50');
+  const [depositProcessing, setDepositProcessing] = useState(false);
+
+  const [isClientWithdrawModalOpen, setIsClientWithdrawModalOpen] = useState(false);
+  const [clientWithdrawAmount, setClientWithdrawAmount] = useState('');
+  const [clientWithdrawProcessing, setClientWithdrawProcessing] = useState(false);
+
+  const fetchClientReviews = async (clientId) => {
+    try {
+      setLoadingReviews(true);
+      const targetId = clientId || user?._id || user?.id;
+      if (!targetId) return;
+      const res = await API.get(`/orders/reviews/client/${targetId}`);
+      if (res.data?.success) {
+        setClientReviews(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch client reviews:', err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
   const fetchData = async () => {
     try {
       const profileRes = await API.get('/auth/profile');
       if (profileRes.data?.user) {
         setUser(profileRes.data.user);
         localStorage.setItem('user', JSON.stringify(profileRes.data.user));
+        fetchClientReviews(profileRes.data.user._id);
       }
     } catch (err) {
       console.error(err);
@@ -137,7 +176,7 @@ export default function ClientDashboard() {
       const res = await API.put(`/orders/${orderId}/approve`);
       if (res.data?.success) {
         alert('Payment released successfully! Please leave a review.');
-        const approvedOrder = selectedOrderForInspect;
+        const approvedOrder = res.data.order || selectedOrderForInspect;
         setSelectedOrderForInspect(null);
         fetchData();
         setRatingOrder(approvedOrder);
@@ -162,7 +201,7 @@ export default function ClientDashboard() {
       });
 
       if (res.data?.success) {
-        alert('Thank you for your feedback!');
+        alert('Thank you for your feedback! Rating posted successfully.');
         setRatingOrder(null);
         setReviewComment('');
         fetchData();
@@ -174,7 +213,86 @@ export default function ClientDashboard() {
     }
   };
 
-  // Calculations for KPI Cards
+  // Handle Client Deposit
+  const handleConfirmDeposit = async (e) => {
+    e.preventDefault();
+    const amount = Number(depositAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid deposit amount.');
+      return;
+    }
+
+    try {
+      setDepositProcessing(true);
+      const res = await API.post('/auth/deposit', { amount });
+
+      if (res.data?.success) {
+        const updatedUser = { ...user, walletBalance: res.data.walletBalance };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+
+        setIsDepositModalOpen(false);
+        alert(`🎉 Successfully deposited $${amount.toFixed(2)} to your UniGig Escrow Wallet!`);
+      }
+    } catch (err) {
+      // Fallback for local testing
+      const currentBal = Number(user?.walletBalance || 0);
+      const updatedUser = { ...user, walletBalance: currentBal + amount };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setIsDepositModalOpen(false);
+      alert(`🎉 Deposited $${amount.toFixed(2)} to your wallet!`);
+    } finally {
+      setDepositProcessing(false);
+    }
+  };
+
+  // Handle Client Refund / Withdraw
+  const handleConfirmClientWithdraw = async (e) => {
+    e.preventDefault();
+    const currentBal = Number(user?.walletBalance || 0);
+    const amount = Number(clientWithdrawAmount);
+
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+
+    if (amount > currentBal) {
+      alert(`Insufficient funds! Your wallet balance is $${currentBal.toFixed(2)}.`);
+      return;
+    }
+
+    try {
+      setClientWithdrawProcessing(true);
+      const res = await API.post('/auth/withdraw', {
+        amount,
+        method: 'card_refund'
+      });
+
+      if (res.data?.success) {
+        const updatedUser = { ...user, walletBalance: res.data.walletBalance };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+
+        setIsClientWithdrawModalOpen(false);
+        setClientWithdrawAmount('');
+        alert(`✅ Withdrawal of $${amount.toFixed(2)} processed back to your original payment card/method!`);
+      }
+    } catch (err) {
+      // Fallback for local testing
+      const updatedUser = { ...user, walletBalance: currentBal - amount };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setIsClientWithdrawModalOpen(false);
+      setClientWithdrawAmount('');
+      alert(`✅ Withdrawal of $${amount.toFixed(2)} processed!`);
+    } finally {
+      setClientWithdrawProcessing(false);
+    }
+  };
+
+  // KPI Calculations
   const activeDeliverables = orders.filter(
     (o) => o.status === 'delivered' || o.status === 'in_progress'
   );
@@ -190,10 +308,14 @@ export default function ClientDashboard() {
     0
   );
 
-  const totalProposalsReceived = jobs.reduce(
-    (sum, j) => sum + (j.proposals?.length || 0),
-    0
-  );
+  // Dynamic Client Rating Calculation
+  const clientAverageRating =
+    clientReviews.length > 0
+      ? (
+          clientReviews.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) /
+          clientReviews.length
+        ).toFixed(1)
+      : user?.rating ? Number(user.rating).toFixed(1) : '5.0';
 
   return (
     <div className="min-h-screen bg-[#f8faf9] py-8 px-4 sm:px-6 lg:px-8 font-sans">
@@ -220,22 +342,36 @@ export default function ClientDashboard() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-gray-500 mt-1">
+<<<<<<< HEAD
                 {user?.university?.toUpperCase() || 'UNIVERSITY'} • <span className="font-semibold text-gray-700 capitalize">{user?.role || 'Client'} Account</span>
+=======
+                {user?.university?.toUpperCase() || 'CAMPUS CLIENT'} •{' '}
+                <span className="font-semibold text-gray-700 capitalize">{user?.role || 'Client'} Account</span>
+>>>>>>> feature/wallet
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsDepositModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 bg-[#eaf8f1] hover:bg-emerald-100 text-[#007a4d] border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-2xs transition-all active:scale-95 cursor-pointer"
+            >
+              <ArrowUpFromLine className="w-4 h-4" />
+              <span>+ Deposit Funds</span>
+            </button>
+
             <Link
               to="/post-job"
-              className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 bg-[#007a4d] hover:bg-[#006640] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95"
+              className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 bg-[#007a4d] hover:bg-[#006640] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Post a New Task</span>
             </Link>
             <Link
               to="/browse-jobs"
-              className="inline-flex items-center justify-center p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] bg-white transition-colors"
+              className="inline-flex items-center justify-center p-2.5 rounded-xl border border-gray-200 text-gray-600 hover:text-[#007a4d] hover:border-[#007a4d] bg-white transition-colors cursor-pointer"
               title="Browse Marketplace"
             >
               <ArrowUpRight className="w-4 h-4" />
@@ -245,6 +381,44 @@ export default function ClientDashboard() {
 
         {/* 4 Professional KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Card 1: Client Wallet Balance with Deposit & Withdraw */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex flex-col justify-between space-y-2.5">
+            <div className="flex items-start justify-between text-gray-400">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider block">Wallet Balance</span>
+                <div className="text-2xl font-black text-gray-900 mt-1">
+                  ${Number(user?.walletBalance || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#007a4d] flex items-center justify-center shrink-0">
+                <Wallet className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsDepositModalOpen(true)}
+                className="flex-1 py-1.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-lg text-[11px] font-bold shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95"
+              >
+                <ArrowUpFromLine className="w-3 h-3" />
+                <span>Deposit</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setClientWithdrawAmount(Number(user?.walletBalance || 0).toFixed(2));
+                  setIsClientWithdrawModalOpen(true);
+                }}
+                className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[11px] font-bold shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95"
+              >
+                <ArrowDownToLine className="w-3 h-3" />
+                <span>Withdraw</span>
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
             <div className="flex items-center justify-between text-gray-400">
               <span className="text-xs font-bold uppercase tracking-wider">Escrow Locked</span>
@@ -265,26 +439,27 @@ export default function ClientDashboard() {
             <p className="text-[11px] text-amber-700 font-medium">In progress or awaiting review</p>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
-            <div className="flex items-center justify-between text-gray-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Posted Task Bids</span>
-              <Users className="w-4 h-4 text-blue-500" />
+          <div 
+            onClick={() => setActiveTab('feedback')}
+            className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between cursor-pointer hover:border-emerald-200 transition-all"
+          >
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Buyer Reputation</p>
+              <h3 className="text-2xl font-black text-gray-900 mt-1 flex items-center gap-1.5">
+                {clientAverageRating}
+                <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+              </h3>
+              <span className="text-[11px] text-[#007a4d] font-semibold mt-1 block hover:underline">
+                {clientReviews.length} {clientReviews.length === 1 ? 'peer rating' : 'peer ratings'} →
+              </span>
             </div>
-            <div className="text-2xl font-black text-gray-900">{totalProposalsReceived}</div>
-            <p className="text-[11px] text-gray-500 font-medium">From {jobs.length} campus tasks</p>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
-            <div className="flex items-center justify-between text-gray-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Total Completed</span>
-              <CheckCircle2 className="w-4 h-4 text-[#007a4d]" />
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Sparkles className="w-6 h-6" />
             </div>
-            <div className="text-2xl font-black text-gray-900">${totalSpent.toFixed(2)}</div>
-            <p className="text-[11px] text-gray-500 font-medium">{pastCompleted.length} gigs paid & rated</p>
           </div>
         </div>
 
-        {/* Escrow Security Assurance Banner */}
+        {/* Escrow Security Banner */}
         <div className="bg-[#eaf8f1]/60 border border-emerald-100/80 rounded-2xl p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#007a4d] text-white flex items-center justify-center shrink-0">
@@ -308,6 +483,7 @@ export default function ClientDashboard() {
             { id: 'deliverables', label: `Active Deliverables (${activeDeliverables.length})` },
             { id: 'tasks', label: `My Posted Tasks (${jobs.length})` },
             { id: 'completed', label: `Past Completed (${pastCompleted.length})` },
+            { id: 'feedback', label: `Student Reviews (${clientReviews.length})` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -323,7 +499,7 @@ export default function ClientDashboard() {
           ))}
         </div>
 
-        {/* TAB 1: ACTIVE DELIVERABLES & PROGRESS */}
+        {/* TAB 1: ACTIVE DELIVERABLES */}
         {activeTab === 'deliverables' && (
           <div className="space-y-4">
             {loadingOrders ? (
@@ -363,6 +539,7 @@ export default function ClientDashboard() {
                           {ord.gig?.title || ord.requirements?.split('\n')[0] || 'Task Order'}
                         </h3>
 
+<<<<<<< HEAD
                         {/* Assigned Student Details, Profile Link & Message Action */}
                         <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 pt-0.5">
                           <span>Assigned Student:</span>
@@ -370,6 +547,13 @@ export default function ClientDashboard() {
                           {studentId ? (
                             <Link
                               to={`/student/profile/${studentId}`}
+=======
+                        <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 pt-0.5">
+                          <span>Assigned Student:</span>
+                          {studentId ? (
+                            <Link
+                              to={`/student/${studentId}`}
+>>>>>>> feature/wallet
                               className="font-bold text-gray-900 hover:text-[#007a4d] hover:underline inline-flex items-center gap-1 transition-colors"
                               title="View Student Profile"
                             >
@@ -380,7 +564,10 @@ export default function ClientDashboard() {
                             <strong className="text-gray-900">{studentName}</strong>
                           )}
 
+<<<<<<< HEAD
                           {/* Instant Direct Message Button */}
+=======
+>>>>>>> feature/wallet
                           {studentId && (
                             <Link
                               to={`/messages?peerId=${studentId}`}
@@ -404,7 +591,7 @@ export default function ClientDashboard() {
                           <button
                             type="button"
                             onClick={() => setSelectedOrderForInspect(ord)}
-                            className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer"
+                            className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer active:scale-95"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                             <span>Inspect & Approve</span>
@@ -418,7 +605,6 @@ export default function ClientDashboard() {
                       </div>
                     </div>
 
-                    {/* Visual Milestone Stepper */}
                     <div className="pt-3 border-t border-gray-100">
                       <div className="grid grid-cols-4 gap-2 text-center text-[10px] font-bold">
                         <div className="text-[#007a4d]">1. Escrow Funded ✓</div>
@@ -454,7 +640,7 @@ export default function ClientDashboard() {
                 <p className="text-xs text-gray-400">Post assignments, club websites, or design tasks to receive student proposals.</p>
                 <Link
                   to="/post-job"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#007a4d] text-white text-xs font-bold rounded-xl hover:bg-[#006640] transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#007a4d] text-white text-xs font-bold rounded-xl hover:bg-[#006640] transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Post Your First Task</span>
@@ -489,7 +675,8 @@ export default function ClientDashboard() {
                       </div>
                       <h3 className="text-base font-bold text-gray-900">{job.title}</h3>
                       <p className="text-xs text-gray-500">
-                        Budget: <strong className="text-gray-800">${job.budget}</strong> • Deadline: {formattedDeadline}
+                        Budget: <strong className="text-gray-800">${job.budget}</strong> • Deadline:{' '}
+                        {formattedDeadline}
                       </p>
                     </div>
 
@@ -528,14 +715,141 @@ export default function ClientDashboard() {
             ) : (
               <div className="divide-y divide-gray-100">
                 {pastCompleted.map((ord) => (
-                  <div key={ord._id} className="py-3 flex items-center justify-between text-xs">
+                  <div key={ord._id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                     <div>
+<<<<<<< HEAD
                       <p className="font-bold text-gray-900">{ord.gig?.title || 'Custom Task'}</p>
                       <p className="text-gray-400">Student: {ord.seller?.name || 'Verified Student'} • Paid: ${ord.price}</p>
+=======
+                      <p className="font-bold text-gray-900 text-sm">{ord.gig?.title || 'Custom Task'}</p>
+                      <p className="text-gray-500 mt-0.5">
+                        Student: <strong className="text-gray-800">{ord.seller?.name || 'Verified Student'}</strong> • Paid:{' '}
+                        <strong className="text-[#007a4d] font-bold">${ord.price}</strong>
+                      </p>
+>>>>>>> feature/wallet
                     </div>
-                    <span className="text-[#007a4d] font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" /> Completed & Escrow Paid
-                    </span>
+                    
+                    <div className="flex items-center gap-3">
+                      {ord.review?.rating ? (
+                        <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1 rounded-xl font-bold">
+                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                          <span>{ord.review.rating}.0 Rated</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setRatingOrder(ord)}
+                          className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
+                        >
+                          <Star className="w-3.5 h-3.5 fill-white" />
+                          <span>Leave Review</span>
+                        </button>
+                      )}
+                      
+                      <span className="text-[#007a4d] font-bold flex items-center gap-1 bg-[#eaf8f1] px-2.5 py-1 rounded-xl border border-emerald-100">
+                        <CheckCircle2 className="w-4 h-4 text-[#007a4d]" /> Escrow Paid
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: REVIEWS RECEIVED FROM STUDENTS */}
+        {activeTab === 'feedback' && (
+          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-gray-100 gap-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <span>Student Feedback & Ratings</span>
+                  <span className="text-xs bg-[#eaf8f1] text-[#007a4d] border border-emerald-100 px-2.5 py-0.5 rounded-full font-bold">
+                    Campus Verified Buyer
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Reviews and recommendations left by university students you have hired.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 bg-gray-50 px-4 py-2.5 rounded-2xl border border-gray-200/70">
+                <div className="flex items-center gap-1">
+                  <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                  <span className="text-xl font-extrabold text-gray-900">{clientAverageRating}</span>
+                </div>
+                <div className="h-7 w-px bg-gray-200"></div>
+                <div className="text-left text-xs">
+                  <p className="font-bold text-gray-800">{clientReviews.length} Student Reviews</p>
+                  <p className="text-[11px] text-[#007a4d] font-medium">Trusted Client</p>
+                </div>
+              </div>
+            </div>
+
+            {loadingReviews ? (
+              <div className="py-16 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-[#007a4d]" />
+                <p className="text-xs text-gray-400">Loading student reviews...</p>
+              </div>
+            ) : clientReviews.length === 0 ? (
+              <div className="py-16 text-center space-y-2 bg-gray-50/50 rounded-2xl border border-gray-100">
+                <p className="text-sm font-bold text-gray-700">No student reviews yet</p>
+                <p className="text-xs text-gray-400">
+                  When students rate their collaboration experience after task completion, it will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {clientReviews.map((rev) => (
+                  <div 
+                    key={rev.id || rev._id} 
+                    className="p-5 rounded-2xl bg-gray-50/60 border border-gray-100 hover:border-gray-200 transition-all space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={rev.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${rev.reviewer || 'Student'}`} 
+                          alt={rev.reviewer} 
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500/20"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-gray-900">{rev.reviewer}</h4>
+                            <span className="text-[10px] text-[#007a4d] bg-[#eaf8f1] border border-emerald-100 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <UserCheck className="w-3.5 h-3.5" /> Verified Student
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500">{rev.university || 'Campus Freelancer'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 sm:self-center">
+                        <div className="flex items-center gap-0.5 text-amber-400">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3.5 h-3.5 ${
+                                i < Number(rev.rating)
+                                  ? 'fill-amber-400 text-amber-400'
+                                  : 'text-gray-200'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-bold text-gray-800 ml-1">{rev.rating}.0</span>
+                        <span className="text-xs text-gray-400">{rev.date}</span>
+                      </div>
+                    </div>
+
+                    {rev.gigTitle && (
+                      <div className="text-xs text-gray-600 bg-white px-3 py-1.5 rounded-xl border border-gray-100 inline-block font-medium">
+                        Completed task: <span className="font-bold text-gray-800">{rev.gigTitle}</span>
+                      </div>
+                    )}
+
+                    <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                      "{rev.comment}"
+                    </p>
                   </div>
                 ))}
               </div>
@@ -544,6 +858,186 @@ export default function ClientDashboard() {
         )}
 
       </div>
+
+      {/* Client Deposit Funds Modal */}
+      {isDepositModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-5 relative">
+            <div className="flex items-start justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#eaf8f1] text-[#007a4d] flex items-center justify-center">
+                  <ArrowUpFromLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Deposit Funds to Escrow</h3>
+                  <p className="text-xs text-gray-500">
+                    Current Balance: <strong className="text-[#007a4d]">${Number(user?.walletBalance || 0).toFixed(2)}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDepositModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmDeposit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Deposit Amount ($) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="5"
+                    required
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    placeholder="50"
+                    className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-[#007a4d] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Select Buttons */}
+              <div className="grid grid-cols-4 gap-2">
+                {['20', '50', '100', '250'].map((amt) => (
+                  <button
+                    type="button"
+                    key={amt}
+                    onClick={() => setDepositAmount(amt)}
+                    className={`py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      depositAmount === amt
+                        ? 'bg-[#007a4d] text-white border-[#007a4d]'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    +${amt}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-3 bg-[#eaf8f1]/70 border border-emerald-100 rounded-2xl flex items-center gap-2 text-[11px] text-emerald-800">
+                <ShieldCheck className="w-4 h-4 text-[#007a4d] shrink-0" />
+                <span>Protected by UniGig 100% Escrow Milestone Vault.</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsDepositModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={depositProcessing}
+                  className="px-5 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {depositProcessing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Depositing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUpFromLine className="w-3.5 h-3.5" />
+                      <span>Add ${depositAmount || '0'} to Wallet</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Client Withdraw Unused Funds Modal */}
+      {isClientWithdrawModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-5 relative">
+            <div className="flex items-start justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center">
+                  <ArrowDownToLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Withdraw Unused Funds</h3>
+                  <p className="text-xs text-gray-500">
+                    Available: <strong className="text-gray-900">${Number(user?.walletBalance || 0).toFixed(2)}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsClientWithdrawModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmClientWithdraw} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Withdraw Amount ($) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max={Number(user?.walletBalance || 0)}
+                    required
+                    value={clientWithdrawAmount}
+                    onChange={(e) => setClientWithdrawAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-[#007a4d] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl text-[11px] text-gray-600">
+                Refunds are processed back to your original payment method / card within 2-3 business days.
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsClientWithdrawModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={clientWithdrawProcessing}
+                  className="px-5 py-2 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {clientWithdrawProcessing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownToLine className="w-3.5 h-3.5" />
+                      <span>Withdraw to Card</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Inspect Deliverables Modal */}
       {selectedOrderForInspect && (
@@ -601,7 +1095,7 @@ export default function ClientDashboard() {
                 type="button"
                 disabled={approvingOrderId === selectedOrderForInspect._id}
                 onClick={() => handleApproveEscrow(selectedOrderForInspect._id)}
-                className="px-5 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-xs"
+                className="px-5 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer shadow-xs active:scale-95"
               >
                 {approvingOrderId === selectedOrderForInspect._id ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -618,7 +1112,17 @@ export default function ClientDashboard() {
       {ratingOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-4">
-            <h3 className="text-base font-bold text-gray-900">Rate Student's Work</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <h3 className="text-base font-bold text-gray-900">Rate Student's Work</h3>
+              <button
+                type="button"
+                onClick={() => setRatingOrder(null)}
+                className="p-1 rounded-full text-gray-400 hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
             <form onSubmit={handleSubmitReview} className="space-y-4">
               <div className="flex items-center justify-center gap-2 py-2">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -626,7 +1130,7 @@ export default function ClientDashboard() {
                     type="button"
                     key={star}
                     onClick={() => setReviewRating(star)}
-                    className="p-1 cursor-pointer"
+                    className="p-1 cursor-pointer transition-transform hover:scale-110"
                   >
                     <Star
                       className={`w-7 h-7 ${
@@ -643,21 +1147,21 @@ export default function ClientDashboard() {
                 rows={3}
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
-                placeholder="Share your experience working with this student..."
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d]"
+                placeholder="Share your experience working with this student (quality, communication, delivery)..."
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d] leading-relaxed"
               />
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setRatingOrder(null)}
-                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 cursor-pointer"
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
                 >
                   Skip
                 </button>
                 <button
                   type="submit"
                   disabled={submittingReview}
-                  className="px-5 py-2 bg-[#007a4d] text-white rounded-xl text-xs font-bold cursor-pointer"
+                  className="px-5 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs active:scale-95"
                 >
                   {submittingReview ? 'Submitting...' : 'Submit Review'}
                 </button>

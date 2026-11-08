@@ -4,7 +4,9 @@ import {
   loginUser,
   getUserProfile,
   updateUserProfile,
-  verifyStudentStatus
+  verifyStudentStatus,
+  depositFunds,
+  withdrawFunds
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import User from '../models/User.js';
@@ -32,6 +34,10 @@ router.get('/user/:id', async (req, res) => {
 // Protected routes (Logged in users)
 router.get('/profile', protect, getUserProfile);
 router.put('/profile', protect, updateUserProfile);
+
+// Wallet Transaction routes (Deposit & Withdraw)
+router.post('/deposit', protect, depositFunds);
+router.post('/withdraw', protect, withdrawFunds);
 
 // Verification route
 router.put('/verify-student/:id', protect, verifyStudentStatus);
