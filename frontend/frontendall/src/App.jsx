@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 
 // Common Components
 import Header from './components/Header';
@@ -24,46 +24,55 @@ import BrowseJobs from './pages/Student/BrowseJobs';
 import ClientProfile from './pages/Client/ClientProfile';
 
 // Admin Pages
-// import AdminDashboard from './pages/Admin/AdminDashboard';
+import AdminDashboard from './pages/Admin/AdminDashboard';
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  // toLowerCase() නිසා /AdminDashboard හෝ /admindashboard දෙකේදීම Header/Footer නොපෙන්වයි
+  const isAdminDashboard = location.pathname.toLowerCase().startsWith('/admindashboard');
+
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50/50 flex flex-col justify-between">
-        <Header />
+    <div className="min-h-screen bg-gray-50/50 flex flex-col justify-between">
+      {!isAdminDashboard && <Header />}
 
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/browse" element={<BrowseGigs />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/gig/:id" element={<GigDetails />} />
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/browse" element={<BrowseGigs />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/gig/:id" element={<GigDetails />} />
 
-            {/* Student Profile Routes */}
-            <Route path="/student/:id" element={<StudentProfile />} />
-            <Route path="/student/profile/:id" element={<StudentProfile />} />
+          {/* Student Profile Routes */}
+          <Route path="/student/:id" element={<StudentProfile />} />
+          <Route path="/student/profile/:id" element={<StudentProfile />} />
 
-            {/* Student Routes */}
-            <Route path="/stddashboard" element={<Dashboard />} />
-            <Route path="/create-gig" element={<CreateGig />} />
-            <Route path="/browse-jobs" element={<BrowseJobs />} />
-            <Route path="/messages" element={<Messages />} />
+          {/* Student Routes */}
+          <Route path="/stddashboard" element={<Dashboard />} />
+          <Route path="/create-gig" element={<CreateGig />} />
+          <Route path="/browse-jobs" element={<BrowseJobs />} />
+          <Route path="/messages" element={<Messages />} />
 
-            {/* Client Routes */}
-            <Route path="/clientdashboard" element={<ClientDashboard />} />
-            <Route path="/post-job" element={<PostJob />} />
-            <Route path="/client/:id" element={<ClientProfile />} />
+          {/* Client Routes */}
+          <Route path="/clientdashboard" element={<ClientDashboard />} />
+          <Route path="/post-job" element={<PostJob />} />
+          <Route path="/client/:id" element={<ClientProfile />} />
 
-            {/* Admin Routes */}
-            {/* <Route path="/AdminDashboard" element={<AdminDashboard />} /> */}
-          </Routes>
-        </main>
+          {/* Admin Routes */}
+          <Route path="/admindashboard" element={<AdminDashboard />} />
+          <Route path="/AdminDashboard" element={<AdminDashboard />} />
+        </Routes>
+      </main>
 
-        <Footer />
-      </div>
-    </Router>
+      {!isAdminDashboard && <Footer />}
+    </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+}

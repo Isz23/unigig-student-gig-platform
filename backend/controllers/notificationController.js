@@ -83,6 +83,11 @@ export const markAllAsRead = async (req, res) => {
     );
     res.status(200).json({ success: true, message: 'All notifications marked as read' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+export const getMyNotifications = getNotifications;
+export const markNotificationAsRead = markAsRead;
+export const markAllNotificationsAsRead = markAllAsRead;

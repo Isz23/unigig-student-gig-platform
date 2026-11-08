@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   DollarSign,
@@ -68,7 +68,7 @@ export default function Dashboard() {
   const [withdrawAccountNotes, setWithdrawAccountNotes] = useState('');
   const [processingWithdraw, setProcessingWithdraw] = useState(false);
 
-  const fetchReviews = async (sellerId) => {
+  const fetchReviews = useCallback(async (sellerId) => {
     try {
       setLoadingReviews(true);
       const targetId = sellerId || user?._id || user?.id;
@@ -82,58 +82,61 @@ export default function Dashboard() {
     } finally {
       setLoadingReviews(false);
     }
-  };
+  }, [user?._id, user?.id]);
+
+  const fetchUserProfile = useCallback(async () => {
+    try {
+      const res = await API.get('/auth/profile');
+      if (res.data?.user) {
+        setUser(res.data.user);
+        localStorage.setItem('user', JSON.stringify(res.data.user));
+        fetchReviews(res.data.user._id);
+      }
+    } catch (err) {
+      if (err.response?.status === 401) {
+        navigate('/login');
+      }
+    }
+  }, [fetchReviews, navigate]);
+
+  const fetchMyGigs = useCallback(async () => {
+    try {
+      setLoadingGigs(true);
+      const res = await API.get('/gigs/my-gigs');
+      if (res.data?.success) {
+        setMyGigs(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching gigs:', err);
+    } finally {
+      setLoadingGigs(false);
+    }
+  }, []);
+
+  const fetchSellerOrders = useCallback(async () => {
+    try {
+      setLoadingOrders(true);
+      const res = await API.get('/orders/seller-orders');
+      if (res.data?.success) {
+        setOrders(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching seller orders:', err);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const res = await API.get('/auth/profile');
-        if (res.data?.user) {
-          setUser(res.data.user);
-          localStorage.setItem('user', JSON.stringify(res.data.user));
-          fetchReviews(res.data.user._id);
-        }
-      } catch (err) {
-        if (err.response?.status === 401) {
-          navigate('/login');
-        }
-      }
-    };
-
-    const fetchMyGigs = async () => {
-      try {
-        const res = await API.get('/gigs/my-gigs');
-        if (res.data?.success) {
-          setMyGigs(res.data.data);
-        }
-      } catch (err) {
-        console.error('Error fetching gigs:', err);
-      } finally {
-        setLoadingGigs(false);
-      }
-    };
-
-    const fetchSellerOrders = async () => {
-      try {
-        const res = await API.get('/orders/seller-orders');
-        if (res.data?.success) {
-          setOrders(res.data.data);
-        }
-      } catch (err) {
-        console.error('Error fetching seller orders:', err);
-      } finally {
-        setLoadingOrders(false);
-      }
-    };
-
     fetchUserProfile();
     fetchMyGigs();
     fetchSellerOrders();
 
-    if (user?._id || user?.id) {
-      fetchReviews(user._id || user.id);
-    }
-  }, [navigate]);
+    // Auto sync profile when window regains focus
+    const handleFocus = () => fetchUserProfile();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchUserProfile, fetchMyGigs, fetchSellerOrders]);
 
   const handleDeleteGig = async (gigId) => {
     if (!window.confirm('Are you sure you want to delete this gig?')) return;
@@ -267,18 +270,7 @@ export default function Dashboard() {
         alert(`✅ ${res.data.message}\n\nFunds will be credited to your account via ${withdrawMethod.toUpperCase()} within 24-48 business hours.`);
       }
     } catch (err) {
-      const newBal = currentBalance - requested;
-      const updatedUser = { ...user, walletBalance: newBal };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-
-      setIsWithdrawModalOpen(false);
-      setWithdrawAmount('');
-      setWithdrawAccountNotes('');
-
-      alert(
-        `✅ Withdrawal request of $${requested.toFixed(2)} submitted successfully!\n\nFunds will be credited via ${withdrawMethod.toUpperCase()} within 24-48 business hours.`
-      );
+      alert(err.response?.data?.message || 'Withdrawal failed. Please try again.');
     } finally {
       setProcessingWithdraw(false);
     }
@@ -301,6 +293,10 @@ export default function Dashboard() {
         ).toFixed(1)
       : '5.0';
 
+  const isStudentVerified =
+    (user?.verificationStatus || '').toLowerCase() === 'verified' ||
+    user?.isVerifiedStudent === true;
+
   return (
     <div className="min-h-screen bg-gray-50/60 py-8 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-7">
@@ -319,14 +315,15 @@ export default function Dashboard() {
                   {user?.name || 'Campus Student'}
                 </h1>
 
-                {user?.verificationStatus === 'verified' ? (
-                  <span className="inline-flex items-center gap-1 bg-[#eaf8f1] border border-emerald-100 text-[#007a4d] text-xs font-bold px-2.5 py-0.5 rounded-full">
-                    <ShieldCheck className="w-3.5 h-3.5 text-[#007a4d]" />
-                    <span>Verified Student</span>
+                {/* VERIFIED STUDENT BADGE */}
+                {isStudentVerified ? (
+                  <span className="inline-flex items-center gap-1.5 bg-[#eaf8f1] border border-emerald-200 text-[#007a4d] text-xs font-bold px-3 py-1 rounded-full shadow-2xs">
+                    <ShieldCheck className="w-4 h-4 text-[#007a4d]" />
+                    <span>Campus Verified Student</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-2.5 py-0.5 rounded-full">
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
                     <span>Verification Pending</span>
                   </span>
                 )}
@@ -334,7 +331,7 @@ export default function Dashboard() {
 
               <p className="text-xs sm:text-sm text-gray-500 mt-1">
                 {user?.university || 'South Eastern University of Sri Lanka'} •{' '}
-                <span className="text-gray-800 font-semibold">
+                <span className="text-gray-800 font-semibold font-mono">
                   {user?.studentRegNumber || 'Reg No Pending'}
                 </span>
               </p>
@@ -531,7 +528,6 @@ export default function Dashboard() {
                         <div className="flex items-center gap-2.5 self-end sm:self-center flex-wrap">
                           <span className="text-sm font-black text-[#007a4d] mr-1">${ord.price?.toFixed(2)}</span>
 
-                          {/* Message / Chat Button */}
                           <Link
                             to={`/messages?peerId=${buyerId}`}
                             title="Chat with Client"
@@ -558,7 +554,6 @@ export default function Dashboard() {
                             </span>
                           )}
 
-                          {/* Rate Client / Completed display */}
                           {ord.status === 'completed' && (
                             <div className="flex items-center gap-2">
                               <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100">
@@ -757,7 +752,6 @@ export default function Dashboard() {
                           </td>
                           <td className="py-4 text-right">
                             <div className="flex items-center justify-end gap-2 flex-wrap">
-                              {/* Chat Link in Table */}
                               <Link
                                 to={`/messages?peerId=${buyerId}`}
                                 title="Chat with Client"
@@ -1053,8 +1047,7 @@ export default function Dashboard() {
                   Deliver for: ORD-{selectedOrderForDelivery._id?.slice(-4).toUpperCase()}
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Client: <strong className="text-gray-800">{selectedOrderForDelivery.buyer?.name || 'Client'}</strong> • Value:{' '}
-                  <strong className="text-[#007a4d]">${selectedOrderForDelivery.price}</strong>
+                  Client: <strong className="text-gray-800">{selectedOrderForDelivery.buyer?.name || 'Client'}</strong> • Value: <strong className="text-[#007a4d]">${Number(selectedOrderForDelivery.price || 0).toFixed(2)}</strong>
                 </p>
               </div>
               <button

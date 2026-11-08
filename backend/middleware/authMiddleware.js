@@ -9,7 +9,18 @@ export const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'unigig_jwt_secret_key_2026');
-      req.user = await User.findById(decoded.id).select('-password');
+      
+      // Token එකේ id හෝ _id තිබුණත් හඳුනාගැනීම
+      const userId = decoded.id || decoded._id || decoded.userId;
+      req.user = await User.findById(userId).select('-password');
+
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User account not found'
+        });
+      }
+
       return next();
     } catch (error) {
       return res.status(401).json({
@@ -27,9 +38,9 @@ export const protect = async (req, res, next) => {
   }
 };
 
-// Admin only middleware
-export const authorizeAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+// Admin only middleware (Case-insensitive)
+export const adminOnly = (req, res, next) => {
+  if (req.user && (req.user.role || '').toLowerCase() === 'admin') {
     next();
   } else {
     res.status(403).json({
@@ -38,3 +49,6 @@ export const authorizeAdmin = (req, res, next) => {
     });
   }
 };
+
+// Alias export
+export const authorizeAdmin = adminOnly;

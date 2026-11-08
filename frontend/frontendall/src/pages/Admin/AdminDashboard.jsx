@@ -1,389 +1,800 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ShieldAlert,
-  ShieldCheck,
-  Users,
+  GraduationCap,
+  Briefcase,
+  LogOut,
+  Trash2,
+  Edit,
   DollarSign,
-  AlertTriangle,
+  Search,
   CheckCircle2,
   XCircle,
-  Eye,
-  Search,
-  Filter,
-  ArrowRight,
-  ExternalLink,
-  Lock,
+  Loader2,
   Layers,
-  ChevronRight,
-  RefreshCw,
+  Save,
+  X,
+  Eye,
+  Star,
+  UserCheck,
+  Calendar,
+  Mail,
+  Building2,
   FileText
 } from 'lucide-react';
+import API from '../../api/axios';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('verifications'); // 'verifications' | 'disputes' | 'moderation'
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('students');
+  const [students, setStudents] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Pending Student Verifications
-  const [pendingVerifications, setPendingVerifications] = useState([
-    {
-      id: 'VERIF-201',
-      name: 'Dulaksha Nipun',
-      university: 'South Eastern University of Sri Lanka',
-      regNumber: 'SEU/IS/22/ICT/047',
-      faculty: 'Faculty of Technology',
-      idCardImage: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=300&auto=format&fit=crop',
-      submittedDate: 'Nov 02, 2026',
-      email: 'seu22ict047@seu.ac.lk'
-    },
-    {
-      id: 'VERIF-202',
-      name: 'Sanduni Fernando',
-      university: 'University of Peradeniya',
-      regNumber: 'UOP/ENG/22/104',
-      faculty: 'Faculty of Engineering',
-      idCardImage: 'https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=300&auto=format&fit=crop',
-      submittedDate: 'Nov 01, 2026',
-      email: 'eng22104@eng.pdn.ac.lk'
+  // Modals state
+  const [inspectUser, setInspectUser] = useState(null); // Expand Details & Reviews
+  const [editingUser, setEditingUser] = useState(null);
+  const [viewingItemsUser, setViewingItemsUser] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Authentication check
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('user') || localStorage.getItem('userInfo');
+      const user = stored ? JSON.parse(stored) : null;
+      if (!user || (user.role || '').toLowerCase() !== 'admin') {
+        navigate('/login');
+      }
+    } catch {
+      navigate('/login');
     }
-  ]);
+  }, [navigate]);
 
-  // 2. Escrow Disputes
-  const [disputes, setDisputes] = useState([
-    {
-      id: 'DISP-901',
-      orderId: 'ORD-9477',
-      title: 'Responsive React & Tailwind Web App',
-      clientName: 'Kavindu Perera (UoM)',
-      freelancerName: 'Dulaksha Nipun (SEUSL)',
-      amount: 35.0,
-      reason: 'Client claims the mobile navbar menu does not toggle smoothly.',
-      submittedDate: 'Oct 31, 2026',
-      status: 'Under Review'
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [stdRes, clientRes] = await Promise.all([
+        API.get('/admin/students'),
+        API.get('/admin/clients')
+      ]);
+      if (stdRes.data?.success) setStudents(stdRes.data.data);
+      if (clientRes.data?.success) setClients(clientRes.data.data);
+    } catch (err) {
+      console.error('Failed to load admin data:', err);
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.clear();
+        navigate('/login');
+      }
+    } finally {
+      setLoading(false);
     }
-  ]);
-
-  // Modals / Inspect States
-  const [inspectStudent, setInspectStudent] = useState(null);
-
-  const handleApproveStudent = (id) => {
-    setPendingVerifications((prev) => prev.filter((item) => item.id !== id));
-    setInspectStudent(null);
   };
 
-  const handleRejectStudent = (id) => {
-    setPendingVerifications((prev) => prev.filter((item) => item.id !== id));
-    setInspectStudent(null);
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate('/login');
   };
 
-  const handleResolveDispute = (dispId, action) => {
-    setDisputes((prev) => prev.filter((d) => d.id !== dispId));
+  // 1. Verify or Revoke Student Action
+  const handleVerifyStudent = async (userId, status) => {
+    try {
+      setActionLoading(true);
+      const res = await API.put(`/admin/users/${userId}/verify`, { status });
+      if (res.data?.success) {
+        setStudents((prev) =>
+          prev.map((s) =>
+            s._id === userId
+              ? { ...s, verificationStatus: status, isVerifiedStudent: status === 'verified' }
+              : s
+          )
+        );
+        if (inspectUser && inspectUser._id === userId) {
+          setInspectUser((prev) => ({
+            ...prev,
+            verificationStatus: status,
+            isVerifiedStudent: status === 'verified'
+          }));
+        }
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Verification update failed');
+    } finally {
+      setActionLoading(false);
+    }
   };
+
+  // 2. Delete User
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to completely delete "${userName}" and all records?`)) return;
+    try {
+      await API.delete(`/admin/users/${userId}`);
+      setStudents((prev) => prev.filter((u) => u._id !== userId));
+      setClients((prev) => prev.filter((u) => u._id !== userId));
+      if (inspectUser?._id === userId) setInspectUser(null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Delete failed');
+    }
+  };
+
+  // 3. Delete Gig
+  const handleDeleteGig = async (gigId) => {
+    if (!window.confirm('Delete this gig from platform?')) return;
+    try {
+      await API.delete(`/admin/gigs/${gigId}`);
+      setViewingItemsUser((prev) => ({
+        ...prev,
+        gigs: prev.gigs.filter((g) => g._id !== gigId)
+      }));
+      setStudents((prev) =>
+        prev.map((s) =>
+          s._id === viewingItemsUser._id
+            ? { ...s, gigs: s.gigs.filter((g) => g._id !== gigId) }
+            : s
+        )
+      );
+    } catch (err) {
+      alert('Failed to delete gig');
+    }
+  };
+
+  // 4. Delete Job
+  const handleDeleteJob = async (jobId) => {
+    if (!window.confirm('Delete this client job post?')) return;
+    try {
+      await API.delete(`/admin/jobs/${jobId}`);
+      setViewingItemsUser((prev) => ({
+        ...prev,
+        jobs: prev.jobs.filter((j) => j._id !== jobId)
+      }));
+      setClients((prev) =>
+        prev.map((c) =>
+          c._id === viewingItemsUser._id
+            ? { ...c, jobs: c.jobs.filter((j) => j._id !== jobId) }
+            : c
+        )
+      );
+    } catch (err) {
+      alert('Failed to delete job');
+    }
+  };
+
+  // 5. Save Edit User
+  const handleSaveUser = async (e) => {
+    e.preventDefault();
+    try {
+      setActionLoading(true);
+      const res = await API.put(`/admin/users/${editingUser._id}`, editingUser);
+      if (res.data?.success) {
+        const updated = res.data.user;
+        setStudents((prev) => prev.map((s) => (s._id === updated._id ? { ...s, ...updated } : s)));
+        setClients((prev) => prev.map((c) => (c._id === updated._id ? { ...c, ...updated } : c)));
+        setEditingUser(null);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Update failed');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const filteredStudents = students.filter(
+    (s) =>
+      s.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.studentRegNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredClients = clients.filter(
+    (c) =>
+      c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50/70 py-8 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-7xl mx-auto space-y-7">
+    <div className="min-h-screen bg-gray-100/70 font-sans text-gray-800">
 
-        {/* ---------------- Admin Header ---------------- */}
-        <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-100">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Campus Trust & Safety Panel</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-              UniGig Super Admin Hub
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-500 max-w-xl leading-relaxed">
-              Verify university credentials, resolve milestone escrow payment disputes, and monitor marketplace activities.
-            </p>
+      {/* TOP ADMIN BAR */}
+      <header className="bg-gray-900 text-white sticky top-0 z-40 px-6 py-3.5 shadow-md flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#007a4d] flex items-center justify-center font-black text-white text-base">
+            U
           </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-gray-500 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
-              Campus Admin: <strong className="text-gray-900">Root Access</strong>
+          <h1 className="text-sm font-extrabold tracking-wide uppercase text-gray-100 flex items-center gap-2">
+            UniGig Control Center
+            <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded border border-emerald-500/30">
+              MASTER ADMIN
             </span>
+          </h1>
+        </div>
+
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
+      </header>
+
+      {/* MAIN CONTENT */}
+      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+        {/* Tab & Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-3 rounded-2xl border border-gray-200 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setActiveTab('students'); setSearchQuery(''); }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'students'
+                  ? 'bg-[#007a4d] text-white shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <GraduationCap className="w-4 h-4" />
+              <span>Student Management ({students.length})</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('clients'); setSearchQuery(''); }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'clients'
+                  ? 'bg-[#007a4d] text-white shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              <span>Client Management ({clients.length})</span>
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder={`Search ${activeTab}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#007a4d]"
+            />
           </div>
         </div>
 
-        {/* ---------------- Key Metric Cards ---------------- */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pending KYC</p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1">{pendingVerifications.length} Students</h3>
-              <span className="text-[11px] text-amber-600 font-semibold block mt-1">Requires review</span>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-              <Users className="w-6 h-6" />
-            </div>
+        {/* LOADING INDICATOR */}
+        {loading ? (
+          <div className="py-20 text-center flex flex-col items-center justify-center gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-[#007a4d]" />
+            <p className="text-xs text-gray-500 font-semibold">Loading data...</p>
           </div>
+        ) : (
+          <>
+            {/* 1. STUDENT SECTION */}
+            {activeTab === 'students' && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                    Registered Campus Students
+                  </h2>
+                </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Disputes</p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1">{disputes.length} Cases</h3>
-              <span className="text-[11px] text-red-600 font-semibold block mt-1">Funds held in Escrow</span>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6" />
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Vault Escrow</p>
-              <h3 className="text-2xl font-black text-[#007a4d] mt-1">$1,420.00</h3>
-              <span className="text-[11px] text-[#007a4d] font-semibold block mt-1">Guaranteed student balance</span>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-[#eaf8f1] text-[#007a4d] flex items-center justify-center">
-              <DollarSign className="w-6 h-6" />
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Verified Peers</p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1">128 Students</h3>
-              <span className="text-[11px] text-emerald-600 font-semibold block mt-1">Across 8 Universities</span>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#007a4d] flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-          </div>
-        </div>
-
-        {/* ---------------- Navigation Tabs ---------------- */}
-        <div className="flex border-b border-gray-200 gap-6 text-xs sm:text-sm font-semibold">
-          <button
-            type="button"
-            onClick={() => setActiveTab('verifications')}
-            className={`pb-3 transition-colors relative flex items-center gap-2 ${
-              activeTab === 'verifications' ? 'text-[#007a4d]' : 'text-gray-400 hover:text-gray-700'
-            }`}
-          >
-            <span>Student ID Verifications ({pendingVerifications.length})</span>
-            {activeTab === 'verifications' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007a4d]" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('disputes')}
-            className={`pb-3 transition-colors relative flex items-center gap-2 ${
-              activeTab === 'disputes' ? 'text-[#007a4d]' : 'text-gray-400 hover:text-gray-700'
-            }`}
-          >
-            <span>Escrow Disputes ({disputes.length})</span>
-            {disputes.length > 0 && (
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            )}
-            {activeTab === 'disputes' && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#007a4d]" />
-            )}
-          </button>
-        </div>
-
-        {/* ---------------- Tab 1: Pending Student Verifications ---------------- */}
-        {activeTab === 'verifications' && (
-          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs space-y-5">
-            <div>
-              <h2 className="text-base font-bold text-gray-900">Pending Student Identity Approvals</h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Inspect official university registration cards and `.ac.lk` email proofs before granting marketplace privileges.
-              </p>
-            </div>
-
-            {pendingVerifications.length === 0 ? (
-              <div className="text-center py-12 text-xs text-gray-400 space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-                <p>All student verification submissions have been cleared!</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-gray-400 uppercase tracking-wider font-bold">
-                      <th className="pb-3">Student Name</th>
-                      <th className="pb-3">University & Faculty</th>
-                      <th className="pb-3">Registration Number</th>
-                      <th className="pb-3">Email Domain</th>
-                      <th className="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                    {pendingVerifications.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50/50">
-                        <td className="py-4 font-bold text-gray-900">{item.name}</td>
-                        <td className="py-4 text-gray-600">
-                          <div>{item.university}</div>
-                          <div className="text-[11px] text-gray-400">{item.faculty}</div>
-                        </td>
-                        <td className="py-4 font-mono font-semibold text-gray-800">{item.regNumber}</td>
-                        <td className="py-4 text-gray-500 font-mono">{item.email}</td>
-                        <td className="py-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setInspectStudent(item)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#eaf8f1] hover:bg-emerald-100 text-[#007a4d] rounded-xl font-bold transition-all"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Inspect ID</span>
-                          </button>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50/80 text-gray-500 uppercase text-[10px] border-b border-gray-100">
+                      <tr>
+                        <th className="p-3.5">Student Details</th>
+                        <th className="p-3.5">University & Reg No</th>
+                        <th className="p-3.5">Verification</th>
+                        <th className="p-3.5">Wallet Balance</th>
+                        <th className="p-3.5">Gigs & Orders</th>
+                        <th className="p-3.5 text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredStudents.length > 0 ? (
+                        filteredStudents.map((std) => (
+                          <tr key={std._id} className="hover:bg-gray-50/50">
+                            <td className="p-3.5">
+                              <div className="font-bold text-gray-900">{std.name}</div>
+                              <div className="text-[11px] text-gray-400">{std.email}</div>
+                            </td>
+                            <td className="p-3.5">
+                              <span className="font-mono text-[#007a4d] font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                                {std.studentRegNumber || 'No Reg'}
+                              </span>
+                              <div className="text-[10px] text-gray-500 mt-0.5">{std.university}</div>
+                            </td>
+                            <td className="p-3.5">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  std.verificationStatus === 'verified'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {std.verificationStatus || 'pending'}
+                                </span>
+
+                                {std.verificationStatus !== 'verified' ? (
+                                  <button
+                                    onClick={() => handleVerifyStudent(std._id, 'verified')}
+                                    disabled={actionLoading}
+                                    title="Quick Verify Student"
+                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded border border-emerald-200 cursor-pointer text-[10px] font-bold flex items-center gap-1"
+                                  >
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                    <span>Verify</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleVerifyStudent(std._id, 'pending')}
+                                    disabled={actionLoading}
+                                    title="Revoke Verification"
+                                    className="p-1 text-gray-400 hover:text-amber-600 rounded cursor-pointer text-[10px]"
+                                  >
+                                    Revoke
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3.5 font-bold text-gray-900 text-sm">
+                              ${Number(std.walletBalance || 0).toFixed(2)}
+                            </td>
+                            <td className="p-3.5">
+                              <button
+                                onClick={() => setViewingItemsUser(std)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-[11px] cursor-pointer"
+                              >
+                                <Layers className="w-3.5 h-3.5 text-blue-600" />
+                                <span>{std.gigs?.length || 0} Gigs</span>
+                                <span className="text-gray-400">| {std.ordersCount || 0} Orders</span>
+                              </button>
+                            </td>
+                            <td className="p-3.5 text-right space-x-1">
+                              {/* INSPECT DETAILS & REVIEWS BUTTON */}
+                              <button
+                                onClick={() => setInspectUser(std)}
+                                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg cursor-pointer"
+                                title="Expand Details & Client Reviews"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingUser(std)}
+                                className="p-1.5 text-gray-600 hover:text-[#007a4d] hover:bg-emerald-50 rounded-lg cursor-pointer"
+                                title="Edit Student & Wallet"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(std._id, std.name)}
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                title="Delete Student"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="py-8 text-center text-gray-400">
+                            No students found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
-        )}
 
-        {/* ---------------- Tab 2: Escrow Disputes ---------------- */}
-        {activeTab === 'disputes' && (
-          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-2xs space-y-5">
-            <div>
-              <h2 className="text-base font-bold text-gray-900">Active Milestone Escrow Disputes</h2>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Review deliverables, peer chat logs, and order terms to safely release or refund held escrow funds.
-              </p>
-            </div>
+            {/* 2. CLIENT SECTION */}
+            {activeTab === 'clients' && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                    Registered Clients
+                  </h2>
+                </div>
 
-            {disputes.length === 0 ? (
-              <div className="text-center py-12 text-xs text-gray-400 space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-                <p>No active disputes! All campus transactions are in good standing.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {disputes.map((disp) => (
-                  <div
-                    key={disp.id}
-                    className="p-5 sm:p-6 rounded-2xl border border-red-100 bg-red-50/20 space-y-4"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono font-bold text-red-600">{disp.id}</span>
-                          <span className="text-xs font-mono font-bold text-gray-400">({disp.orderId})</span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800">
-                            {disp.status}
-                          </span>
-                        </div>
-                        <h3 className="text-base font-bold text-gray-900 mt-1">{disp.title}</h3>
-                      </div>
-                      <div className="text-left sm:text-right">
-                        <span className="text-xs text-gray-400">Held in Escrow</span>
-                        <h4 className="text-lg font-black text-[#007a4d]">${disp.amount.toFixed(2)}</h4>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-600">
-                      <div>
-                        <p><strong className="text-gray-900">Client:</strong> {disp.clientName}</p>
-                        <p><strong className="text-gray-900">Student Freelancer:</strong> {disp.freelancerName}</p>
-                      </div>
-                      <div className="bg-white p-3 rounded-xl border border-gray-200/80">
-                        <span className="font-bold text-gray-900 block mb-0.5">Dispute Reason:</span>
-                        <p className="italic text-gray-600">{disp.reason}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3 pt-2">
-                      <Link
-                        to="/messages"
-                        className="px-4 py-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-bold transition-all"
-                      >
-                        Inspect Chat Logs
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleResolveDispute(disp.id, 'refund')}
-                        className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-bold transition-all"
-                      >
-                        Refund Client ($35)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleResolveDispute(disp.id, 'release')}
-                        className="px-5 py-2 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl text-xs font-bold shadow-2xs transition-all"
-                      >
-                        Release to Student ($35)
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50/80 text-gray-500 uppercase text-[10px] border-b border-gray-100">
+                      <tr>
+                        <th className="p-3.5">Client Details</th>
+                        <th className="p-3.5">Role / University</th>
+                        <th className="p-3.5">Escrow Wallet Balance</th>
+                        <th className="p-3.5">Posted Tasks & Orders</th>
+                        <th className="p-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredClients.length > 0 ? (
+                        filteredClients.map((client) => (
+                          <tr key={client._id} className="hover:bg-gray-50/50">
+                            <td className="p-3.5">
+                              <div className="font-bold text-gray-900">{client.name}</div>
+                              <div className="text-[11px] text-gray-400">{client.email}</div>
+                            </td>
+                            <td className="p-3.5 text-gray-600">
+                              <span className="capitalize px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700">
+                                {client.role}
+                              </span>
+                              <div className="text-[10px] text-gray-400 mt-0.5">{client.university || 'General Client'}</div>
+                            </td>
+                            <td className="p-3.5 font-bold text-[#007a4d] text-sm">
+                              ${Number(client.walletBalance || 0).toFixed(2)}
+                            </td>
+                            <td className="p-3.5">
+                              <button
+                                onClick={() => setViewingItemsUser(client)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-[11px] cursor-pointer"
+                              >
+                                <Briefcase className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>{client.jobs?.length || 0} Posted Tasks</span>
+                                <span className="text-gray-400">| {client.ordersCount || 0} Orders</span>
+                              </button>
+                            </td>
+                            <td className="p-3.5 text-right space-x-1">
+                              {/* INSPECT DETAILS & STUDENT REVIEWS BUTTON */}
+                              <button
+                                onClick={() => setInspectUser(client)}
+                                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg cursor-pointer"
+                                title="Expand Details & Student Reviews"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingUser(client)}
+                                className="p-1.5 text-gray-600 hover:text-[#007a4d] hover:bg-emerald-50 rounded-lg cursor-pointer"
+                                title="Edit Client & Wallet"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(client._id, client.name)}
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                title="Delete Client"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="5" className="py-8 text-center text-gray-400">
+                            No clients found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
-          </div>
+          </>
         )}
 
-      </div>
+      </main>
 
-      {/* ---------------- Inspect Student Verification Modal ---------------- */}
-      {inspectStudent && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-gray-100 space-y-5 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-gray-900">Inspect Student Credentials</h3>
-                <p className="text-xs text-gray-500">{inspectStudent.id}</p>
+      {/* MODAL 1: EXPAND USER DETAILS & REVIEWS INSPECTOR */}
+      {inspectUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-[#007a4d] font-black flex items-center justify-center text-base">
+                  {inspectUser.name?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    {inspectUser.name}
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-gray-100 uppercase text-gray-600">
+                      {inspectUser.role}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-gray-400">{inspectUser.email}</p>
+                </div>
               </div>
+
               <button
-                type="button"
-                onClick={() => setInspectStudent(null)}
-                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400"
+                onClick={() => setInspectUser(null)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
               >
-                <XCircle className="w-5 h-5" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-100">
-                <div>
-                  <span className="text-gray-400 block font-medium">Full Name</span>
-                  <strong className="text-gray-900 text-sm">{inspectStudent.name}</strong>
-                </div>
-                <div>
-                  <span className="text-gray-400 block font-medium">Student Registration</span>
-                  <strong className="text-gray-900 text-sm font-mono">{inspectStudent.regNumber}</strong>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-gray-400 block font-medium">University Domain</span>
-                  <strong className="text-emerald-700 font-mono">{inspectStudent.email}</strong>
-                </div>
+            {/* Profile Meta Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                <span className="text-[10px] text-gray-400 block font-medium">Campus / University</span>
+                <span className="font-bold text-gray-800 truncate block mt-0.5">{inspectUser.university || 'SEUSL'}</span>
               </div>
 
-              <div>
-                <span className="text-gray-400 block font-bold uppercase tracking-wider mb-1.5">
-                  Uploaded Student ID Card Preview
+              {inspectUser.role === 'student' && (
+                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                  <span className="text-[10px] text-gray-400 block font-medium">Student Reg Number</span>
+                  <span className="font-mono font-bold text-[#007a4d] block mt-0.5">
+                    {inspectUser.studentRegNumber || 'Not provided'}
+                  </span>
+                </div>
+              )}
+
+              <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                <span className="text-[10px] text-gray-400 block font-medium">Wallet Balance</span>
+                <span className="font-bold text-[#007a4d] text-sm block mt-0.5">
+                  ${Number(inspectUser.walletBalance || 0).toFixed(2)}
                 </span>
-                <div className="rounded-2xl overflow-hidden border border-gray-200 aspect-[16/10] bg-gray-100 shadow-inner">
-                  <img
-                    src={inspectStudent.idCardImage}
-                    alt="University Student ID"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+            {/* Verification Status Banner with One-Click Verify */}
+            {inspectUser.role === 'student' && (
+              <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-900">Campus Verification Status:</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      inspectUser.verificationStatus === 'verified'
+                        ? 'bg-emerald-200 text-emerald-800'
+                        : 'bg-amber-200 text-amber-800'
+                    }`}>
+                      {inspectUser.verificationStatus || 'pending'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    Verifying grants the student the official Campus Verified badge and sends a real-time notification.
+                  </p>
+                </div>
+
+                {inspectUser.verificationStatus !== 'verified' ? (
+                  <button
+                    onClick={() => handleVerifyStudent(inspectUser._id, 'verified')}
+                    disabled={actionLoading}
+                    className="px-4 py-2 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Approve & Verify</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleVerifyStudent(inspectUser._id, 'pending')}
+                    disabled={actionLoading}
+                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold border border-rose-200 cursor-pointer shrink-0"
+                  >
+                    Revoke Status
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* REVIEWS SECTION */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  <span>Reviews & Feedback Received ({inspectUser.reviews?.length || 0})</span>
+                </h4>
+              </div>
+
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {inspectUser.reviews && inspectUser.reviews.length > 0 ? (
+                  inspectUser.reviews.map((rev) => (
+                    <div key={rev.id} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="font-bold text-gray-800 flex items-center gap-1.5">
+                          <span>{rev.reviewerName}</span>
+                          {rev.studentRegNumber && (
+                            <span className="text-[10px] font-mono text-gray-400">({rev.studentRegNumber})</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-0.5 text-amber-500 font-bold">
+                          <span>{rev.rating}</span>
+                          <Star className="w-3 h-3 fill-amber-400" />
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-gray-600 leading-relaxed italic">
+                        "{rev.comment || 'No written feedback provided.'}"
+                      </p>
+                      <div className="text-[10px] text-gray-400">
+                        {new Date(rev.date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-6 text-center text-xs text-gray-400 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                    No reviews received by this {inspectUser.role} yet.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-gray-100">
               <button
-                type="button"
-                onClick={() => handleRejectStudent(inspectStudent.id)}
-                className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl text-xs font-bold transition-all"
+                onClick={() => setInspectUser(null)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
               >
-                Reject & Request Re-upload
+                Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: EDIT USER & WALLET */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-gray-900">
+                Edit {editingUser.role === 'student' ? 'Student' : 'Client'} Details
+              </h3>
+              <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-gray-700 block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={editingUser.name || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-gray-700 block mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editingUser.email || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-gray-700 block mb-1">Wallet Money ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editingUser.walletBalance ?? 0}
+                  onChange={(e) => setEditingUser({ ...editingUser, walletBalance: e.target.value })}
+                  className="w-full px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl font-bold text-[#007a4d]"
+                  required
+                />
+              </div>
+
+              {editingUser.role === 'student' && (
+                <>
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Student Reg Number</label>
+                    <input
+                      type="text"
+                      value={editingUser.studentRegNumber || ''}
+                      onChange={(e) => setEditingUser({ ...editingUser, studentRegNumber: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-gray-700 block mb-1">Verification Status</label>
+                    <select
+                      value={editingUser.verificationStatus || 'pending'}
+                      onChange={(e) => setEditingUser({ ...editingUser, verificationStatus: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="verified">Verified</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: VIEW & DELETE GIGS OR CLIENT JOBS */}
+      {viewingItemsUser && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-gray-900">
+                {viewingItemsUser.role === 'student'
+                  ? `Active Gigs by ${viewingItemsUser.name}`
+                  : `Posted Tasks by ${viewingItemsUser.name}`}
+              </h3>
+              <button onClick={() => setViewingItemsUser(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {viewingItemsUser.role === 'student' ? (
+                viewingItemsUser.gigs?.length > 0 ? (
+                  viewingItemsUser.gigs.map((g) => (
+                    <div key={g._id} className="p-3 bg-gray-50 rounded-xl flex items-center justify-between border border-gray-100">
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900">{g.title}</h4>
+                        <div className="text-[10px] text-gray-400">
+                          Category: {g.category} • Price: ${g.price} • Rating: {g.rating || 5}⭐
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteGig(g._id)}
+                        className="p-1.5 text-rose-500 hover:bg-rose-100 rounded-lg cursor-pointer"
+                        title="Delete this gig"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400 py-6 text-center">No gigs posted by this student yet.</p>
+                )
+              ) : (
+                viewingItemsUser.jobs?.length > 0 ? (
+                  viewingItemsUser.jobs.map((j) => (
+                    <div key={j._id} className="p-3 bg-gray-50 rounded-xl flex items-center justify-between border border-gray-100">
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900">{j.title}</h4>
+                        <div className="text-[10px] text-gray-400">
+                          Budget: ${j.budget} • Status: {j.status} • Bids: {j.proposals?.length || 0}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteJob(j._id)}
+                        className="p-1.5 text-rose-500 hover:bg-rose-100 rounded-lg cursor-pointer"
+                        title="Delete this task"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400 py-6 text-center">No tasks posted by this client yet.</p>
+                )
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2">
               <button
-                type="button"
-                onClick={() => handleApproveStudent(inspectStudent.id)}
-                className="px-5 py-2.5 bg-[#007a4d] hover:bg-[#00633e] text-white rounded-xl text-xs font-bold shadow-2xs transition-all flex items-center gap-1.5"
+                onClick={() => setViewingItemsUser(null)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-xl cursor-pointer"
               >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Approve Verified Badge</span>
+                Close
               </button>
             </div>
           </div>
