@@ -18,7 +18,14 @@ import {
   Link2,
   CheckCircle2,
   Loader2,
+<<<<<<< Updated upstream
   Trash2
+=======
+  Trash2,
+  MessageSquare,
+  ArrowDownToLine,
+  Wallet
+>>>>>>> Stashed changes
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -47,6 +54,38 @@ export default function Dashboard() {
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [submittingDelivery, setSubmittingDelivery] = useState(false);
 
+<<<<<<< Updated upstream
+=======
+  // Student Rates Client Modal states
+  const [ratingOrderForClient, setRatingOrderForClient] = useState(null);
+  const [clientRating, setClientRating] = useState(5);
+  const [clientReviewComment, setClientReviewComment] = useState('');
+  const [submittingClientReview, setSubmittingClientReview] = useState(false);
+
+  // Student Withdraw Modal states
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawMethod, setWithdrawMethod] = useState('bank');
+  const [withdrawAccountNotes, setWithdrawAccountNotes] = useState('');
+  const [processingWithdraw, setProcessingWithdraw] = useState(false);
+
+  const fetchReviews = async (sellerId) => {
+    try {
+      setLoadingReviews(true);
+      const targetId = sellerId || user?._id || user?.id;
+      if (!targetId) return;
+      const res = await API.get(`/orders/reviews/student/${targetId}`);
+      if (res.data?.success) {
+        setReviews(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching reviews:', err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
+>>>>>>> Stashed changes
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -157,6 +196,75 @@ export default function Dashboard() {
     }
   };
 
+<<<<<<< Updated upstream
+=======
+  // Submit Feedback / Review for Client
+  const handleSubmitClientReview = async (e) => {
+    e.preventDefault();
+    if (!ratingOrderForClient) return;
+
+    try {
+      setSubmittingClientReview(true);
+      const orderId = ratingOrderForClient._id || ratingOrderForClient.id;
+      const res = await API.post(`/orders/${orderId}/review-client`, {
+        rating: Number(clientRating),
+        comment: clientReviewComment.trim()
+      });
+
+      if (res.data?.success) {
+        alert('🎉 Thank you! Your feedback for the client has been posted successfully.');
+        setOrders((prev) =>
+          prev.map((ord) =>
+            (ord._id || ord.id) === orderId
+              ? { ...ord, sellerReview: res.data.sellerReview }
+              : ord
+          )
+        );
+        setRatingOrderForClient(null);
+        setClientReviewComment('');
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit review for client.');
+    } finally {
+      setSubmittingClientReview(false);
+    }
+  };
+
+  // Handle Student Withdrawal Request
+  const handleConfirmWithdrawal = (e) => {
+    e.preventDefault();
+    const currentBalance = Number(user?.walletBalance || 0);
+    const requested = Number(withdrawAmount);
+
+    if (requested <= 0 || isNaN(requested)) {
+      alert('Please enter a valid withdrawal amount.');
+      return;
+    }
+
+    if (requested > currentBalance) {
+      alert(`Insufficient funds! Your available balance is $${currentBalance.toFixed(2)}.`);
+      return;
+    }
+
+    setProcessingWithdraw(true);
+    setTimeout(() => {
+      const newBal = currentBalance - requested;
+      const updatedUser = { ...user, walletBalance: newBal };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      setProcessingWithdraw(false);
+      setIsWithdrawModalOpen(false);
+      setWithdrawAmount('');
+      setWithdrawAccountNotes('');
+
+      alert(
+        `✅ Withdrawal request of $${requested.toFixed(2)} submitted successfully!\n\nFunds will be credited to your account via ${withdrawMethod.toUpperCase()} within 24-48 business hours.`
+      );
+    }, 600);
+  };
+
+>>>>>>> Stashed changes
   const activeOrdersCount = orders.filter(
     (o) => o.status === 'in_progress' || o.status === 'delivered'
   ).length;
@@ -252,19 +360,35 @@ export default function Dashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Available Balance</p>
-              <h3 className="text-2xl font-black text-gray-900 mt-1">
-                ${Number(user?.walletBalance || 0).toFixed(2)}
-              </h3>
-              <span className="text-[11px] text-[#007a4d] font-semibold flex items-center gap-1 mt-1">
-                <TrendingUp className="w-3 h-3" /> Ready for withdrawal
-              </span>
+          
+          {/* Card 1: Available Balance + Withdraw Action */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex flex-col justify-between space-y-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Available Balance</p>
+                <h3 className="text-2xl font-black text-gray-900 mt-1">
+                  ${Number(user?.walletBalance || 0).toFixed(2)}
+                </h3>
+                <span className="text-[11px] text-[#007a4d] font-semibold flex items-center gap-1 mt-0.5">
+                  <TrendingUp className="w-3 h-3" /> Ready for withdrawal
+                </span>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-[#007a4d] flex items-center justify-center shrink-0">
+                <DollarSign className="w-5 h-5" />
+              </div>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#007a4d] flex items-center justify-center">
-              <DollarSign className="w-6 h-6" />
-            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setWithdrawAmount(Number(user?.walletBalance || 0).toFixed(2));
+                setIsWithdrawModalOpen(true);
+              }}
+              className="w-full py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-98"
+            >
+              <ArrowDownToLine className="w-3.5 h-3.5" />
+              <span>Withdraw Funds</span>
+            </button>
           </div>
 
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between">
@@ -686,6 +810,127 @@ export default function Dashboard() {
         )}
 
       </div>
+
+      {/* Student Withdrawal Request Modal */}
+      {isWithdrawModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-5 relative">
+            <div className="flex items-start justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#eaf8f1] text-[#007a4d] flex items-center justify-center">
+                  <ArrowDownToLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Withdraw Student Earnings</h3>
+                  <p className="text-xs text-gray-500">
+                    Available: <strong className="text-[#007a4d]">${Number(user?.walletBalance || 0).toFixed(2)}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWithdrawModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmWithdrawal} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Withdrawal Amount ($) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max={Number(user?.walletBalance || 0)}
+                    required
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-[#007a4d] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Payout Method
+                </label>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {[
+                    { id: 'bank', label: 'Bank Transfer' },
+                    { id: 'ezcash', label: 'eZ Cash / mCash' }
+                  ].map((m) => (
+                    <button
+                      type="button"
+                      key={m.id}
+                      onClick={() => setWithdrawMethod(m.id)}
+                      className={`py-2 px-3 rounded-xl border font-bold cursor-pointer transition-all ${
+                        withdrawMethod === m.id
+                          ? 'bg-[#eaf8f1] text-[#007a4d] border-[#007a4d]'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Account Details / Mobile Number
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={withdrawAccountNotes}
+                  onChange={(e) => setWithdrawAccountNotes(e.target.value)}
+                  placeholder="Enter Bank Name, Account Number, Branch (or Mobile Wallet Number)..."
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 focus:outline-none focus:border-[#007a4d] focus:bg-white leading-relaxed"
+                />
+              </div>
+
+              <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-2xl flex items-center gap-2 text-[11px] text-emerald-800">
+                <CheckCircle2 className="w-4 h-4 text-[#007a4d] shrink-0" />
+                <span>Zero platform withdrawal fees for verified university students.</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsWithdrawModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={processingWithdraw}
+                  className="px-5 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {processingWithdraw ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownToLine className="w-3.5 h-3.5" />
+                      <span>Confirm Request</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Deliver Work Modal */}
       {isDeliveryModalOpen && selectedOrderForDelivery && (

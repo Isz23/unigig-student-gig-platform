@@ -15,8 +15,17 @@ import {
   Clock,
   Sparkles,
   ArrowUpRight,
+<<<<<<< Updated upstream
   AlertCircle,
   FileText
+=======
+  FileText,
+  MessageSquare,
+  UserCheck,
+  Wallet,
+  ArrowUpFromLine,
+  ArrowDownToLine
+>>>>>>> Stashed changes
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -48,6 +57,34 @@ export default function ClientDashboard() {
   const [reviewComment, setReviewComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+<<<<<<< Updated upstream
+=======
+  // Client Deposit & Withdraw Modal States
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('50');
+  const [depositProcessing, setDepositProcessing] = useState(false);
+
+  const [isClientWithdrawModalOpen, setIsClientWithdrawModalOpen] = useState(false);
+  const [clientWithdrawAmount, setClientWithdrawAmount] = useState('');
+  const [clientWithdrawProcessing, setClientWithdrawProcessing] = useState(false);
+
+  const fetchClientReviews = async (clientId) => {
+    try {
+      setLoadingReviews(true);
+      const targetId = clientId || user?._id || user?.id;
+      if (!targetId) return;
+      const res = await API.get(`/orders/reviews/client/${targetId}`);
+      if (res.data?.success) {
+        setClientReviews(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch client reviews:', err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
+
+>>>>>>> Stashed changes
   const fetchData = async () => {
     try {
       const profileRes = await API.get('/auth/profile');
@@ -172,7 +209,62 @@ export default function ClientDashboard() {
     }
   };
 
+<<<<<<< Updated upstream
   // Calculations for KPI Cards
+=======
+  // Handle Client Deposit
+  const handleConfirmDeposit = (e) => {
+    e.preventDefault();
+    const amount = Number(depositAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid deposit amount.');
+      return;
+    }
+
+    setDepositProcessing(true);
+    setTimeout(() => {
+      const currentBal = Number(user?.walletBalance || 0);
+      const updatedUser = { ...user, walletBalance: currentBal + amount };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      setDepositProcessing(false);
+      setIsDepositModalOpen(false);
+      alert(`🎉 Successfully deposited $${amount.toFixed(2)} to your UniGig Escrow Wallet!`);
+    }, 600);
+  };
+
+  // Handle Client Refund / Withdraw
+  const handleConfirmClientWithdraw = (e) => {
+    e.preventDefault();
+    const currentBal = Number(user?.walletBalance || 0);
+    const amount = Number(clientWithdrawAmount);
+
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+
+    if (amount > currentBal) {
+      alert(`Insufficient funds! Your wallet balance is $${currentBal.toFixed(2)}.`);
+      return;
+    }
+
+    setClientWithdrawProcessing(true);
+    setTimeout(() => {
+      const updatedUser = { ...user, walletBalance: currentBal - amount };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      setClientWithdrawProcessing(false);
+      setIsClientWithdrawModalOpen(false);
+      setClientWithdrawAmount('');
+      alert(`✅ Withdrawal of $${amount.toFixed(2)} processed back to your original payment card/method!`);
+    }, 600);
+  };
+
+  // KPI Calculations
+>>>>>>> Stashed changes
   const activeDeliverables = orders.filter(
     (o) => o.status === 'delivered' || o.status === 'in_progress'
   );
@@ -188,10 +280,21 @@ export default function ClientDashboard() {
     0
   );
 
+<<<<<<< Updated upstream
   const totalProposalsReceived = jobs.reduce(
     (sum, j) => sum + (j.proposals?.length || 0),
     0
   );
+=======
+  // Dynamic Client Rating Calculation
+  const clientAverageRating =
+    clientReviews.length > 0
+      ? (
+          clientReviews.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) /
+          clientReviews.length
+        ).toFixed(1)
+      : user?.rating ? Number(user.rating).toFixed(1) : '5.0';
+>>>>>>> Stashed changes
 
   return (
     <div className="min-h-screen bg-[#f8faf9] py-8 px-4 sm:px-6 lg:px-8 font-sans">
@@ -223,7 +326,16 @@ export default function ClientDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsDepositModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 bg-[#eaf8f1] hover:bg-emerald-100 text-[#007a4d] border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-2xs transition-all active:scale-95 cursor-pointer"
+            >
+              <ArrowUpFromLine className="w-4 h-4" />
+              <span>+ Deposit Funds</span>
+            </button>
+
             <Link
               to="/post-job"
               className="flex-1 md:flex-initial inline-flex items-center justify-center gap-2 bg-[#007a4d] hover:bg-[#006640] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-xs transition-all active:scale-95"
@@ -243,6 +355,44 @@ export default function ClientDashboard() {
 
         {/* 4 Professional KPI Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Card 1: Client Wallet Balance with Deposit & Withdraw */}
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex flex-col justify-between space-y-2.5">
+            <div className="flex items-start justify-between text-gray-400">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider block">Wallet Balance</span>
+                <div className="text-2xl font-black text-gray-900 mt-1">
+                  ${Number(user?.walletBalance || 0).toFixed(2)}
+                </div>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#007a4d] flex items-center justify-center shrink-0">
+                <Wallet className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsDepositModalOpen(true)}
+                className="flex-1 py-1.5 bg-[#007a4d] hover:bg-[#006640] text-white rounded-lg text-[11px] font-bold shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95"
+              >
+                <ArrowUpFromLine className="w-3 h-3" />
+                <span>Deposit</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setClientWithdrawAmount(Number(user?.walletBalance || 0).toFixed(2));
+                  setIsClientWithdrawModalOpen(true);
+                }}
+                className="flex-1 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-[11px] font-bold shadow-2xs flex items-center justify-center gap-1 transition-all cursor-pointer active:scale-95"
+              >
+                <ArrowDownToLine className="w-3 h-3" />
+                <span>Withdraw</span>
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
             <div className="flex items-center justify-between text-gray-400">
               <span className="text-xs font-bold uppercase tracking-wider">Escrow Locked</span>
@@ -263,6 +413,7 @@ export default function ClientDashboard() {
             <p className="text-[11px] text-amber-700 font-medium">In progress or awaiting review</p>
           </div>
 
+<<<<<<< Updated upstream
           <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs space-y-1">
             <div className="flex items-center justify-between text-gray-400">
               <span className="text-xs font-bold uppercase tracking-wider">Posted Task Bids</span>
@@ -279,6 +430,25 @@ export default function ClientDashboard() {
             </div>
             <div className="text-2xl font-black text-gray-900">${totalSpent.toFixed(2)}</div>
             <p className="text-[11px] text-gray-500 font-medium">{pastCompleted.length} gigs paid & rated</p>
+=======
+          <div 
+            onClick={() => setActiveTab('feedback')}
+            className="bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs flex items-center justify-between cursor-pointer hover:border-emerald-200 transition-all"
+          >
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Buyer Reputation</p>
+              <h3 className="text-2xl font-black text-gray-900 mt-1 flex items-center gap-1.5">
+                {clientAverageRating}
+                <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+              </h3>
+              <span className="text-[11px] text-[#007a4d] font-semibold mt-1 block hover:underline">
+                {clientReviews.length} {clientReviews.length === 1 ? 'peer rating' : 'peer ratings'} →
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Sparkles className="w-6 h-6" />
+            </div>
+>>>>>>> Stashed changes
           </div>
         </div>
 
@@ -326,7 +496,7 @@ export default function ClientDashboard() {
           <div className="space-y-4">
             {loadingOrders ? (
               <div className="bg-white rounded-3xl border border-gray-100 p-16 text-center shadow-2xs">
-                <Loader2 className="w-6 h-6 animate-spin text-[#007a4d] mx-auto" />
+                <Loader2 className="w-6 h-6 animate-spin text-[#007a4d]" />
               </div>
             ) : activeDeliverables.length === 0 ? (
               <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center text-xs text-gray-400 space-y-2">
@@ -408,7 +578,7 @@ export default function ClientDashboard() {
           <div className="space-y-4">
             {loadingJobs ? (
               <div className="bg-white rounded-3xl border border-gray-100 p-16 text-center shadow-2xs">
-                <Loader2 className="w-6 h-6 animate-spin text-[#007a4d] mx-auto" />
+                <Loader2 className="w-6 h-6 animate-spin text-[#007a4d]" />
               </div>
             ) : jobs.length === 0 ? (
               <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center shadow-2xs space-y-3">
@@ -507,6 +677,186 @@ export default function ClientDashboard() {
         )}
 
       </div>
+
+      {/* Client Deposit Funds Modal */}
+      {isDepositModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-5 relative">
+            <div className="flex items-start justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#eaf8f1] text-[#007a4d] flex items-center justify-center">
+                  <ArrowUpFromLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Deposit Funds to Escrow</h3>
+                  <p className="text-xs text-gray-500">
+                    Current Balance: <strong className="text-[#007a4d]">${Number(user?.walletBalance || 0).toFixed(2)}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDepositModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmDeposit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Deposit Amount ($) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min="5"
+                    required
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    placeholder="50"
+                    className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-[#007a4d] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Select Buttons */}
+              <div className="grid grid-cols-4 gap-2">
+                {['20', '50', '100', '250'].map((amt) => (
+                  <button
+                    type="button"
+                    key={amt}
+                    onClick={() => setDepositAmount(amt)}
+                    className={`py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      depositAmount === amt
+                        ? 'bg-[#007a4d] text-white border-[#007a4d]'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    +${amt}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-3 bg-[#eaf8f1]/70 border border-emerald-100 rounded-2xl flex items-center gap-2 text-[11px] text-emerald-800">
+                <ShieldCheck className="w-4 h-4 text-[#007a4d] shrink-0" />
+                <span>Protected by UniGig 100% Escrow Milestone Vault.</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsDepositModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={depositProcessing}
+                  className="px-5 py-2 bg-[#007a4d] hover:bg-[#006640] text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {depositProcessing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Depositing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUpFromLine className="w-3.5 h-3.5" />
+                      <span>Add ${depositAmount || '0'} to Wallet</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Client Withdraw Unused Funds Modal */}
+      {isClientWithdrawModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-5 relative">
+            <div className="flex items-start justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center">
+                  <ArrowDownToLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">Withdraw Unused Funds</h3>
+                  <p className="text-xs text-gray-500">
+                    Available: <strong className="text-gray-900">${Number(user?.walletBalance || 0).toFixed(2)}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsClientWithdrawModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmClientWithdraw} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Withdraw Amount ($) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max={Number(user?.walletBalance || 0)}
+                    required
+                    value={clientWithdrawAmount}
+                    onChange={(e) => setClientWithdrawAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-[#007a4d] focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 border border-gray-200 rounded-2xl text-[11px] text-gray-600">
+                Refunds are processed back to your original payment method / card within 2-3 business days.
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsClientWithdrawModalOpen(false)}
+                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={clientWithdrawProcessing}
+                  className="px-5 py-2 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {clientWithdrawProcessing ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownToLine className="w-3.5 h-3.5" />
+                      <span>Withdraw to Card</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Inspect Deliverables Modal */}
       {selectedOrderForInspect && (
