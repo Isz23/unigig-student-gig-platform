@@ -1,6 +1,7 @@
 import Order from '../models/Order.js';
 import User from '../models/User.js';
 import Gig from '../models/Gig.js';
+import { createNotification } from './notificationController.js';
 
 // @desc    Create a new order & hold funds in escrow
 // @route   POST /api/orders
@@ -25,10 +26,12 @@ export const createOrder = async (req, res) => {
     const deadline = new Date();
     deadline.setDate(deadline.getDate() + days);
 
+    const sellerId = gig.seller || gig.user;
+
     const order = await Order.create({
       gig: gig._id,
       buyer: req.user._id,
-      seller: gig.seller || gig.user,
+      seller: sellerId,
       packageTier: packageTier || 'Basic',
       price: orderPrice,
       requirements: requirements || '',
@@ -38,8 +41,17 @@ export const createOrder = async (req, res) => {
     });
 
     // Update seller's pending escrow balance
-    await User.findByIdAndUpdate(order.seller, {
+    await User.findByIdAndUpdate(sellerId, {
       $inc: { pendingEscrowBalance: orderPrice }
+    });
+
+    await createNotification({
+      recipient: sellerId,
+      sender: req.user._id,
+      type: 'order_placed',
+      title: 'New Order Received! 🚀',
+      message: `${req.user.name || 'A client'} placed an order for "${gig.title}". $${orderPrice.toFixed(2)} held in Escrow.`,
+      link: '/stddashboard'
     });
 
     res.status(201).json({
@@ -169,6 +181,15 @@ export const submitWork = async (req, res) => {
 
     await order.save();
 
+    await createNotification({
+      recipient: order.buyer,
+      sender: req.user._id,
+      type: 'order_delivered',
+      title: 'Deliverable Ready for Review 🚀',
+      message: `${req.user.name || 'Student'} submitted the project deliverable for ORD-${order._id.toString().slice(-4).toUpperCase()}. Please inspect and approve.`,
+      link: '/clientdashboard'
+    });
+
     res.status(200).json({
       success: true,
       message: 'Work submitted for client review',
@@ -213,6 +234,16 @@ export const approveAndReleaseEscrow = async (req, res) => {
         pendingEscrowBalance: -order.price,
         walletBalance: order.price
       }
+    });
+
+
+    await createNotification({
+      recipient: order.seller,
+      sender: req.user._id,
+      type: 'order_completed',
+      title: 'Payment Released! 💰',
+      message: `Client approved your deliverable! $${order.price.toFixed(2)} has been released from Escrow to your student wallet.`,
+      link: '/stddashboard'
     });
 
     res.status(200).json({
@@ -280,6 +311,18 @@ export const cancelOrder = async (req, res) => {
       $inc: { walletBalance: order.price }
     });
 
+    const otherPartyId = currentUserId === buyerId ? sellerId : buyerId;
+    const targetLink = currentUserId === buyerId ? '/stddashboard' : '/clientdashboard';
+
+    await createNotification({
+      recipient: otherPartyId,
+      sender: req.user._id,
+      type: 'system',
+      title: 'Order Cancelled ⚠️',
+      message: `Order ORD-${order._id.toString().slice(-4).toUpperCase()} was cancelled. Reason: ${order.cancellationReason}`,
+      link: targetLink
+    });
+
     res.status(200).json({
       success: true,
       message: 'Order cancelled successfully. Funds have been refunded from Escrow to Buyer wallet.',
@@ -325,11 +368,20 @@ export const requestRevision = async (req, res) => {
       });
     }
 
-    // 3. Update order state back to in_progress or revision_requested
+    // 3. Update order state back to in_progress
     order.status = 'in_progress';
     order.revisionNotes = revisionNotes;
     order.revisionRequestedAt = new Date();
     await order.save();
+
+    await createNotification({
+      recipient: order.seller,
+      sender: req.user._id,
+      type: 'system',
+      title: 'Revision Requested 📝',
+      message: `Client requested changes for ORD-${order._id.toString().slice(-4).toUpperCase()}: "${revisionNotes.slice(0, 50)}..."`,
+      link: '/stddashboard'
+    });
 
     res.status(200).json({
       success: true,
@@ -405,6 +457,14 @@ export const addOrderReview = async (req, res) => {
       gig.reviewCount = allGigOrders.length;
       await gig.save();
     }
+    await createNotification({
+      recipient: order.seller,
+      sender: req.user._id,
+      type: 'system',
+      title: 'New Review & Rating Received! ⭐',
+      message: `${req.user.name || 'Client'} gave you a ${rating}-star review for completed order ORD-${order._id.toString().slice(-4).toUpperCase()}.`,
+      link: `/student/${order.seller.toString()}`
+    });
 
     res.status(200).json({
       success: true,

@@ -1,4 +1,5 @@
 import Message from '../models/Message.js';
+import { createNotification } from './notificationController.js';
 
 export const sendMessage = async (req, res) => {
   try {
@@ -18,6 +19,15 @@ export const sendMessage = async (req, res) => {
     const populatedMessage = await Message.findById(message._id)
       .populate('sender', 'name role email')
       .populate('receiver', 'name role email');
+
+    await createNotification({
+      recipient: receiverId,
+      sender: senderId,
+      type: 'message',
+      title: `New Message from ${req.user.name || 'Peer'}`,
+      message: text.trim().length > 60 ? `${text.trim().substring(0, 60)}...` : text.trim(),
+      link: `/messages?peerId=${senderId}`,
+    });
 
     res.status(201).json({ success: true, data: populatedMessage });
   } catch (error) {

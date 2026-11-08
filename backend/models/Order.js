@@ -12,7 +12,7 @@ const orderSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
-    // Gigs හරහා එන Orders වලට gig ID එක වැටේ, Custom Job Requests වලදී මෙය optional වේ
+   
     gig: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Gig',
