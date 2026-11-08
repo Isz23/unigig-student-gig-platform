@@ -15,19 +15,13 @@ import {
   Clock,
   Sparkles,
   ArrowUpRight,
-<<<<<<< HEAD
   AlertCircle,
-  FileText,
-  MessageSquare,
-  UserCheck
-=======
   FileText,
   MessageSquare,
   UserCheck,
   Wallet,
   ArrowUpFromLine,
   ArrowDownToLine
->>>>>>> feature/wallet
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -235,7 +229,6 @@ export default function ClientDashboard() {
         alert(`🎉 Successfully deposited $${amount.toFixed(2)} to your UniGig Escrow Wallet!`);
       }
     } catch (err) {
-      // Fallback for local testing
       const currentBal = Number(user?.walletBalance || 0);
       const updatedUser = { ...user, walletBalance: currentBal + amount };
       setUser(updatedUser);
@@ -280,7 +273,6 @@ export default function ClientDashboard() {
         alert(`✅ Withdrawal of $${amount.toFixed(2)} processed back to your original payment card/method!`);
       }
     } catch (err) {
-      // Fallback for local testing
       const updatedUser = { ...user, walletBalance: currentBal - amount };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -342,12 +334,8 @@ export default function ClientDashboard() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-gray-500 mt-1">
-<<<<<<< HEAD
-                {user?.university?.toUpperCase() || 'UNIVERSITY'} • <span className="font-semibold text-gray-700 capitalize">{user?.role || 'Client'} Account</span>
-=======
                 {user?.university?.toUpperCase() || 'CAMPUS CLIENT'} •{' '}
                 <span className="font-semibold text-gray-700 capitalize">{user?.role || 'Client'} Account</span>
->>>>>>> feature/wallet
               </p>
             </div>
           </div>
@@ -539,21 +527,11 @@ export default function ClientDashboard() {
                           {ord.gig?.title || ord.requirements?.split('\n')[0] || 'Task Order'}
                         </h3>
 
-<<<<<<< HEAD
-                        {/* Assigned Student Details, Profile Link & Message Action */}
                         <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 pt-0.5">
                           <span>Assigned Student:</span>
-                          
                           {studentId ? (
                             <Link
                               to={`/student/profile/${studentId}`}
-=======
-                        <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 pt-0.5">
-                          <span>Assigned Student:</span>
-                          {studentId ? (
-                            <Link
-                              to={`/student/${studentId}`}
->>>>>>> feature/wallet
                               className="font-bold text-gray-900 hover:text-[#007a4d] hover:underline inline-flex items-center gap-1 transition-colors"
                               title="View Student Profile"
                             >
@@ -564,10 +542,6 @@ export default function ClientDashboard() {
                             <strong className="text-gray-900">{studentName}</strong>
                           )}
 
-<<<<<<< HEAD
-                          {/* Instant Direct Message Button */}
-=======
->>>>>>> feature/wallet
                           {studentId && (
                             <Link
                               to={`/messages?peerId=${studentId}`}
@@ -675,8 +649,7 @@ export default function ClientDashboard() {
                       </div>
                       <h3 className="text-base font-bold text-gray-900">{job.title}</h3>
                       <p className="text-xs text-gray-500">
-                        Budget: <strong className="text-gray-800">${job.budget}</strong> • Deadline:{' '}
-                        {formattedDeadline}
+                        Budget: <strong className="text-gray-800">${job.budget}</strong> • Deadline: {formattedDeadline}
                       </p>
                     </div>
 
@@ -717,16 +690,11 @@ export default function ClientDashboard() {
                 {pastCompleted.map((ord) => (
                   <div key={ord._id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                     <div>
-<<<<<<< HEAD
-                      <p className="font-bold text-gray-900">{ord.gig?.title || 'Custom Task'}</p>
-                      <p className="text-gray-400">Student: {ord.seller?.name || 'Verified Student'} • Paid: ${ord.price}</p>
-=======
                       <p className="font-bold text-gray-900 text-sm">{ord.gig?.title || 'Custom Task'}</p>
                       <p className="text-gray-500 mt-0.5">
                         Student: <strong className="text-gray-800">{ord.seller?.name || 'Verified Student'}</strong> • Paid:{' '}
                         <strong className="text-[#007a4d] font-bold">${ord.price}</strong>
                       </p>
->>>>>>> feature/wallet
                     </div>
                     
                     <div className="flex items-center gap-3">

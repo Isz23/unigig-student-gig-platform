@@ -19,13 +19,9 @@ import {
   CheckCircle2,
   Loader2,
   Trash2,
-<<<<<<< HEAD
-  MessageSquare
-=======
   MessageSquare,
   ArrowDownToLine,
   Wallet
->>>>>>> feature/wallet
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -271,7 +267,6 @@ export default function Dashboard() {
         alert(`✅ ${res.data.message}\n\nFunds will be credited to your account via ${withdrawMethod.toUpperCase()} within 24-48 business hours.`);
       }
     } catch (err) {
-      // Fallback update if backend endpoint is not yet connected
       const newBal = currentBalance - requested;
       const updatedUser = { ...user, walletBalance: newBal };
       setUser(updatedUser);
@@ -533,11 +528,7 @@ export default function Dashboard() {
                           </p>
                         </div>
 
-<<<<<<< HEAD
-                        <div className="flex items-center gap-2.5 self-end sm:self-center">
-=======
                         <div className="flex items-center gap-2.5 self-end sm:self-center flex-wrap">
->>>>>>> feature/wallet
                           <span className="text-sm font-black text-[#007a4d] mr-1">${ord.price?.toFixed(2)}</span>
 
                           {/* Message / Chat Button */}
@@ -765,11 +756,7 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td className="py-4 text-right">
-<<<<<<< HEAD
-                            <div className="flex items-center justify-end gap-2">
-=======
                             <div className="flex items-center justify-end gap-2 flex-wrap">
->>>>>>> feature/wallet
                               {/* Chat Link in Table */}
                               <Link
                                 to={`/messages?peerId=${buyerId}`}
@@ -779,11 +766,7 @@ export default function Dashboard() {
                                 <MessageSquare className="w-3.5 h-3.5" />
                               </Link>
 
-<<<<<<< HEAD
-                              {ord.status === 'in_progress' ? (
-=======
                               {ord.status === 'in_progress' && (
->>>>>>> feature/wallet
                                 <button
                                   type="button"
                                   onClick={() => handleOpenDeliveryModal(ord)}
@@ -791,13 +774,6 @@ export default function Dashboard() {
                                 >
                                   Deliver Work
                                 </button>
-<<<<<<< HEAD
-                              ) : ord.status === 'delivered' ? (
-                                <span className="text-[11px] text-blue-600 font-semibold">Under Client Review</span>
-                              ) : ord.status === 'completed' ? (
-                                <span className="text-[11px] text-emerald-600 font-semibold">Payment Received</span>
-                              ) : (
-=======
                               )}
 
                               {ord.status === 'delivered' && (
@@ -826,7 +802,6 @@ export default function Dashboard() {
                               )}
 
                               {ord.status !== 'in_progress' && ord.status !== 'delivered' && ord.status !== 'completed' && (
->>>>>>> feature/wallet
                                 <span className="text-[11px] text-gray-400">Closed</span>
                               )}
                             </div>
